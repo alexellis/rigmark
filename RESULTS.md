@@ -1,9 +1,37 @@
 # Published reference runs
 
 These are appliance speed measurements, not model-quality rankings. All three
-results used the same clean RigMark revision, comparison ID, prompts, low-effort
-request body, 4,096-token completion limit, and run counts. Every code, prose,
-and structured output passed its completion gate: **15/15 per appliance**.
+results within each table use the same clean RigMark revision, comparison ID,
+prompts, low-effort request body, 4,096-token completion limit, and run counts.
+Every code, prose, and structured output passed its completion gate: **15/15
+per appliance**.
+
+## Matched GLM TP2 → TP4 sweep
+
+This pair used clean RigMark revision `d8353e93b274` and comparison ID
+`2026-09-05-glm-tp2-tp4-rigmark-v1`. RigMark's strict comparison accepts the
+receipts without `--allow-mismatch`.
+
+| Measurement | GLM-5.3 TP2 | GLM-5.3 TP4 | TP4 / TP2 |
+|---|---:|---:|---:|
+| Completed code decode | 42.6 | **75.2** | **1.77×** |
+| Completed prose decode | 22.2 | **29.8** | **1.34×** |
+| Valid structured ceiling | 54.6 | **109.6** | **2.01×** |
+| Cold 64K prefill | 1,905 | **2,276** | **1.19×** |
+| Warm 64K replay | 11,464 | **40,859** | **3.56×** |
+| C1 short code-load, end-to-end | 31.2 | **50.8** | **1.63×** |
+| C2 short code-load, end-to-end | 42.8 | **75.2** | **1.76×** |
+| C4 short code-load, end-to-end | 61.1 | **119.3** | **1.95×** |
+
+TP2 used two directly connected DGX Sparks, Libert NVFP4, and adaptive
+DFlash2. TP4 used four DGX Sparks in a switchless RoCE ring, Red Hat NVFP4,
+BF16 KV, static DFlash2 `k=7`, and the released NCCL v0.1.0 patch. This is an
+appliance comparison—not a topology-only claim.
+
+- [TP2 result JSON](results/reference/glm53-libert-nvfp4-tp2-adaptive-low.json)
+- [TP2 share card](results/reference/glm53-libert-nvfp4-tp2-adaptive-low.card.txt)
+- [TP4 result JSON](results/reference/glm53-redhat-nvfp4-tp4-static-k7-low.json)
+- [TP4 share card](results/reference/glm53-redhat-nvfp4-tp4-static-k7-low.card.txt)
 
 ## Matched standard sweep
 
