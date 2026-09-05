@@ -24,6 +24,8 @@ class CompareTest(unittest.TestCase):
         self.assertIn("PROSE DECODE", card)
         self.assertIn("1.00×", card)
         self.assertIn("left 15/15", card)
+        self.assertIn("BENCH  left git:", card)
+        self.assertIn("clean", card)
 
 
 if __name__ == "__main__":

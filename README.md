@@ -11,6 +11,39 @@ SGLang, local GPU servers, or multi-node DGX Spark recipes. A different model or
 serving stack is an appliance comparison; identical weights and software are
 required before claiming a topology-only speed-up.
 
+## One screenshot, one receipt
+
+```text
+╔════════════════════════════════════════════════════════════════════════════════╗
+║ R I G M A R K  //  REAL OUTPUT. HONEST SPEED. RECEIPTS INCLUDED.               ║
+║ OUTPUT  //  15/15 COMPLETE                                                     ║
+║                                                                                ║
+║ MODEL     Qwen3.8-27B-FP8-vllm                                                 ║
+║ HARDWARE  1x NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB          ║
+║ MODE      reasoning=low  protocol=1.0.0                                        ║
+║ BENCH     git:046e92cbe941  //  clean                                          ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ REAL OUTPUT  //  MEDIAN [RANGE]  //  COMPLETION GATE                           ║
+║ CODE        129.5 tok/s  [124.0–130.4]  PASS 5/5                               ║
+║ PROSE        84.2 tok/s  [81.9–100.1]  PASS 5/5                                ║
+║ STRUCTURED  136.0 tok/s  [135.0–136.1]  PASS 5/5                               ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ PREFILL   64K cold 5,808 tok/s  //  replay 85,248 tok/s                        ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ SHORT CODE LOAD  //  END-TO-END  //  256-TOKEN CAP                             ║
+║ AGGREGATE   C1 108.7  |  C2 206.0  |  C4 385.4 tok/s                           ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ RECEIPT   sha256:604ea2c48107a69f…                                             ║
+║ SCREENSHOT → POST TO X • LINK THE JSON RECEIPT • #RigMark                      ║
+║ github.com/alexellis/rigmark                                                   ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+```
+
+The card is the shareable headline. It always shows the benchmark Git revision
+and whether that worktree was clean or dirty. The content-hashed
+[result JSON](results/reference/qwen38-27b-fp8-rtxpro6000-low.json) is the
+receipt: complete outputs, ranges, TTFT, settings, and appliance metadata.
+
 ## Run the standard suite
 
 Python 3.10 or newer is required; there are no third-party packages.

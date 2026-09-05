@@ -89,6 +89,18 @@ def completion_count(result: dict[str, Any]) -> tuple[int, int]:
     return sum(gate["passed"] for gate in gates), sum(gate["total"] for gate in gates)
 
 
+def benchmark_identity(result: dict[str, Any]) -> str:
+    protocol = result.get("protocol", {})
+    revision = str(protocol.get("repository_revision", "unknown"))[:12]
+    dirty = protocol.get("repository_dirty")
+    state = "clean" if dirty is False else "dirty" if dirty is True else "unknown"
+    identity = f"git:{revision} {state}"
+    if dirty is True:
+        worktree = str(protocol.get("repository_worktree_sha256", "unknown"))[:12]
+        identity += f" worktree:{worktree}"
+    return identity
+
+
 def card_metric(
     label: str,
     left: dict[str, Any],
@@ -127,6 +139,8 @@ def render_card(
         card_rule("╠", "═", "╣"),
         card_line(f"LEFT   {left_label}"),
         card_line(f"RIGHT  {right_label}"),
+        card_line(f"BENCH  left {benchmark_identity(left)}"),
+        card_line(f"       right {benchmark_identity(right)}"),
         card_rule("╠", "═", "╣"),
         card_line(f"{'METRIC':<24} {'LEFT':>14}  {'RIGHT':>18}  {'RIGHT/LEFT':>12}"),
         card_line(card_metric("CODE DECODE", left, right, ("decode", "code", "decode_tokens_per_second"))),

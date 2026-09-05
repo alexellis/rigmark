@@ -5,6 +5,7 @@
 ║ MODEL     Qwen3.8-27B-FP8-vllm                                                 ║
 ║ HARDWARE  1x NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB          ║
 ║ MODE      reasoning=low  protocol=1.0.0                                        ║
+║ BENCH     git:046e92cbe941  //  clean                                          ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
 ║ REAL OUTPUT  //  MEDIAN [RANGE]  //  COMPLETION GATE                           ║
 ║ CODE        129.5 tok/s  [124.0–130.4]  PASS 5/5                               ║

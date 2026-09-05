@@ -40,6 +40,18 @@ def metric(result: dict[str, Any], workload: str) -> str:
     )
 
 
+def benchmark_identity(result: dict[str, Any]) -> str:
+    protocol = result.get("protocol", {})
+    revision = str(protocol.get("repository_revision", "unknown"))
+    dirty = protocol.get("repository_dirty")
+    state = "clean" if dirty is False else "dirty" if dirty is True else "state unknown"
+    value = f"BENCH     git:{revision[:12]}  //  {state}"
+    if dirty is True:
+        fingerprint = str(protocol.get("repository_worktree_sha256", "unknown"))
+        value += f"  //  worktree:{fingerprint[:12]}"
+    return value
+
+
 def render(result: dict[str, Any], fingerprint: str) -> str:
     run = result["run"]
     settings = result["settings"]
@@ -68,6 +80,7 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
         line(f"MODEL     {run['model']}"),
         line(f"HARDWARE  {appliance.get('hardware', 'unspecified')}"),
         line(f"MODE      reasoning={effort}  protocol={result['protocol']['version']}"),
+        line(benchmark_identity(result)),
         rule("╠", "═", "╣"),
         line("REAL OUTPUT  //  MEDIAN [RANGE]  //  COMPLETION GATE"),
         line(metric(result, "code")),

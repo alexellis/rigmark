@@ -20,6 +20,8 @@ class ReportTest(unittest.TestCase):
         self.assertIn("OUTPUT  //  15/15 COMPLETE", card)
         self.assertIn("PROSE", card)
         self.assertIn("tok/s", card)
+        self.assertIn("git:", card)
+        self.assertIn("clean", card)
         self.assertIn("SHORT CODE LOAD  //  END-TO-END", card)
         self.assertIn(fingerprint[:16], card)
 
@@ -29,6 +31,14 @@ class ReportTest(unittest.TestCase):
         card = report.render(result, "0" * 64)
         self.assertIn("OUTPUT  //  14/15 COMPLETE — DO NOT HEADLINE", card)
         self.assertIn("FAIL 4/5", card)
+
+    def test_dirty_card_includes_worktree_fingerprint(self):
+        result = json.loads(json.dumps(self.result))
+        result["protocol"]["repository_dirty"] = True
+        result["protocol"]["repository_worktree_sha256"] = "a" * 64
+        card = report.render(result, "0" * 64)
+        self.assertIn("dirty", card)
+        self.assertIn("worktree:aaaaaaaaaaaa", card)
 
     def test_save_report_writes_card_beside_receipt(self):
         with TemporaryDirectory() as directory:

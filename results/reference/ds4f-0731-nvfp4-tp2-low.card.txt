@@ -5,6 +5,7 @@
 ║ MODEL     deepseek-v4-flash-0731                                               ║
 ║ HARDWARE  2x NVIDIA DGX Spark (GB10)                                           ║
 ║ MODE      reasoning=low  protocol=1.0.0                                        ║
+║ BENCH     git:046e92cbe941  //  clean                                          ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
 ║ REAL OUTPUT  //  MEDIAN [RANGE]  //  COMPLETION GATE                           ║
 ║ CODE         72.9 tok/s  [69.7–74.1]  PASS 5/5                                 ║
