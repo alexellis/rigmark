@@ -80,7 +80,8 @@ topology, negotiated link speed, model and drafter revisions, serving image or
 commit, quantisation, KV configuration, context limit, speculative depth, and
 whether any other traffic shared the endpoint.
 
-The receipt records the benchmark repository commit and whether its worktree
-was dirty when the run began. Dirty runs include a worktree fingerprint and
-remain useful for development, but a clean committed revision is required for
-a reproducible public reference.
+The JSON receipt and every share card record the benchmark repository commit
+and whether its worktree was dirty when the run began. Dirty runs are retained,
+not rejected. They include a fingerprint over tracked changes, untracked paths,
+and untracked file contents, but a clean committed revision remains preferable
+for a reproducible public reference.

@@ -193,9 +193,20 @@ def git_identity() -> dict[str, Any]:
                 cwd=HERE,
                 stderr=subprocess.DEVNULL,
             )
-            identity["repository_worktree_sha256"] = hashlib.sha256(
-                status + b"\0" + diff
-            ).hexdigest()
+            untracked = subprocess.check_output(
+                ["git", "ls-files", "--others", "--exclude-standard", "-z"],
+                cwd=HERE,
+                stderr=subprocess.DEVNULL,
+            )
+            worktree = hashlib.sha256(status + b"\0" + diff)
+            for raw_path in sorted(path for path in untracked.split(b"\0") if path):
+                path = HERE / os.fsdecode(raw_path)
+                worktree.update(b"\0untracked\0" + raw_path + b"\0")
+                if path.is_symlink():
+                    worktree.update(os.fsencode(os.readlink(path)))
+                elif path.is_file():
+                    worktree.update(path.read_bytes())
+            identity["repository_worktree_sha256"] = worktree.hexdigest()
         return identity
     except (OSError, subprocess.CalledProcessError):
         return {

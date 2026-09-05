@@ -275,6 +275,9 @@ def main() -> None:
         print("\nWarning: model IDs differ; this is an appliance comparison, not a topology-only comparison.")
     if mismatches:
         print("\nWarning: comparison forced despite mismatches: " + ", ".join(mismatches))
+    print("\nBenchmark identity:")
+    print(f"- {left_label}: {benchmark_identity(left)}")
+    print(f"- {right_label}: {benchmark_identity(right)}")
 
 
 if __name__ == "__main__":
