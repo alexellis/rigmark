@@ -508,7 +508,7 @@ def main() -> None:
     parser.add_argument("--model", default="auto")
     parser.add_argument("--api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--runs", type=int, default=5)
-    parser.add_argument("--decode-tokens", type=int, default=2048)
+    parser.add_argument("--decode-tokens", type=int, default=3072)
     parser.add_argument("--prefill-depths", type=comma_ints, default=comma_ints("8192,32768,65536"))
     parser.add_argument("--prefill-runs", type=int, default=3)
     parser.add_argument("--concurrency", type=comma_ints, default=comma_ints("1,2,4"))

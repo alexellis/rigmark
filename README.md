@@ -34,7 +34,7 @@ identical; use a new ID for the next sweep.
 
 The default suite performs:
 
-- five runs of code, prose, and structured JSON with a 2,048-token ceiling;
+- five runs of code, prose, and structured JSON with a 3,072-token ceiling;
 - three cold/immediate-warm pairs at 8,192, 32,768, and 65,536 tokens; and
 - three rounds of code at concurrency 1, 2, and 4 with 256-token outputs.
 
