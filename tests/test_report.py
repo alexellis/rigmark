@@ -17,20 +17,20 @@ class ReportTest(unittest.TestCase):
         fingerprint = hashlib.sha256(self.path.read_bytes()).hexdigest()
         card = report.render(self.result, fingerprint)
         self.assertTrue(all(len(line) == report.WIDTH for line in card.splitlines()))
-        self.assertIn("OUTPUT  //  15/15 COMPLETE", card)
+        self.assertIn("15/15 OUTPUTS COMPLETE", card)
         self.assertIn("PROSE", card)
         self.assertIn("tok/s", card)
         self.assertIn("git:", card)
         self.assertIn("clean", card)
-        self.assertIn("SHORT CODE LOAD  //  END-TO-END", card)
+        self.assertIn("MULTI-AGENT LOAD", card)
         self.assertIn(fingerprint[:16], card)
 
     def test_failed_gate_marks_card_incomplete(self):
         result = json.loads(json.dumps(self.result))
         result["decode"]["prose"]["completion_gate"]["passed"] = 4
         card = report.render(result, "0" * 64)
-        self.assertIn("OUTPUT  //  14/15 COMPLETE — DO NOT HEADLINE", card)
-        self.assertIn("FAIL 4/5", card)
+        self.assertIn("14/15 OUTPUTS COMPLETE — DO NOT HEADLINE", card)
+        self.assertIn("✗ 4/5", card)
 
     def test_dirty_card_includes_worktree_fingerprint(self):
         result = json.loads(json.dumps(self.result))

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 
-WIDTH = 82
+WIDTH = 92
 
 
 def clipped(value: object, width: int) -> str:
@@ -21,22 +21,28 @@ def clipped(value: object, width: int) -> str:
 
 
 def line(value: object = "") -> str:
-    return "║ " + clipped(value, WIDTH - 4).ljust(WIDTH - 4) + " ║"
+    return "│  " + clipped(value, WIDTH - 4).ljust(WIDTH - 4) + "│"
 
 
 def rule(left: str, middle: str, right: str) -> str:
     return left + middle * (WIDTH - 2) + right
 
 
+def section(title: str) -> str:
+    prefix = f"├─ {title} "
+    return prefix + "─" * (WIDTH - len(prefix) - 1) + "┤"
+
+
 def metric(result: dict[str, Any], workload: str) -> str:
     data = result["decode"][workload]
     speed = data["decode_tokens_per_second"]
     gate = data["completion_gate"]
-    mark = "PASS" if gate["passed"] == gate["total"] else "FAIL"
+    mark = "✓" if gate["passed"] == gate["total"] else "✗"
+    label = "STRUCTURED*" if workload == "structured" else workload.upper()
     return (
-        f"{workload.upper():<10} {speed['median']:>6.1f} tok/s  "
-        f"[{speed['minimum']:.1f}–{speed['maximum']:.1f}]  "
-        f"{mark} {gate['passed']}/{gate['total']}"
+        f"{label:<18} {speed['median']:>7.1f} tok/s"
+        f"     {speed['minimum']:>6.1f}–{speed['maximum']:<6.1f}"
+        f"          {mark} {gate['passed']}/{gate['total']}"
     )
 
 
@@ -45,10 +51,10 @@ def benchmark_identity(result: dict[str, Any]) -> str:
     revision = str(protocol.get("repository_revision", "unknown"))
     dirty = protocol.get("repository_dirty")
     state = "clean" if dirty is False else "dirty" if dirty is True else "state unknown"
-    value = f"BENCH     git:{revision[:12]}  //  {state}"
+    value = f"SOURCE     git:{revision[:12]}  •  {state}"
     if dirty is True:
         fingerprint = str(protocol.get("repository_worktree_sha256", "unknown"))
-        value += f"  //  worktree:{fingerprint[:12]}"
+        value += f"  •  worktree:{fingerprint[:12]}"
     return value
 
 
@@ -69,23 +75,25 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
         .get("reasoning_effort", "unspecified")
     )
     lines = [
-        rule("╔", "═", "╗"),
-        line("R I G M A R K  //  REAL OUTPUT. HONEST SPEED. RECEIPTS INCLUDED."),
+        rule("╭", "─", "╮"),
+        line("R I G M A R K   //   AGENT WORKLOAD RECEIPT"),
+        line("BENCHMARKS LOCAL AI THE WAY CODING AGENTS ACTUALLY USE IT"),
         line(
-            f"OUTPUT  //  {passed}/{total} COMPLETE"
+            f"●  {passed}/{total} OUTPUTS COMPLETE"
             if complete else
-            f"OUTPUT  //  {passed}/{total} COMPLETE — DO NOT HEADLINE"
+            f"▲  {passed}/{total} OUTPUTS COMPLETE — DO NOT HEADLINE"
         ),
-        line(),
-        line(f"MODEL     {run['model']}"),
-        line(f"HARDWARE  {appliance.get('hardware', 'unspecified')}"),
-        line(f"MODE      reasoning={effort}  protocol={result['protocol']['version']}"),
+        section("SYSTEM"),
+        line(f"MODEL      {run['model']}"),
+        line(f"APPLIANCE  {appliance.get('hardware', 'unspecified')}"),
+        line(f"RUN        reasoning={effort}  •  protocol={result['protocol']['version']}"),
         line(benchmark_identity(result)),
-        rule("╠", "═", "╣"),
-        line("REAL OUTPUT  //  MEDIAN [RANGE]  //  COMPLETION GATE"),
+        section("REAL OUTPUT"),
+        line("WORKLOAD                 MEDIAN          OBSERVED RANGE          COMPLETE"),
         line(metric(result, "code")),
         line(metric(result, "prose")),
         line(metric(result, "structured")),
+        line("* predictable-output ceiling; not a proxy for agent speed"),
     ]
     depths = settings.get("prefill_depths", [])
     if depths:
@@ -94,8 +102,8 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
         cold = data["cold"]["effective_prefill_tokens_per_second"]["median"]
         warm = data["warm_replay"]["effective_prefill_tokens_per_second"]["median"]
         lines.extend((
-            rule("╠", "═", "╣"),
-            line(f"PREFILL   {depth // 1024}K cold {cold:,.0f} tok/s  //  replay {warm:,.0f} tok/s"),
+            section("CONTEXT"),
+            line(f"{depth // 1024}K PREFILL   cold {cold:,.0f} tok/s  •  cached replay {warm:,.0f} tok/s"),
         ))
     levels = settings.get("concurrency", [])
     if levels:
@@ -106,19 +114,19 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
             ]["median"]
             values.append(f"C{level_value} {median:.1f}")
         lines.extend((
-            rule("╠", "═", "╣"),
+            section("MULTI-AGENT LOAD"),
             line(
-                "SHORT CODE LOAD  //  END-TO-END  //  "
-                f"{settings['concurrency_tokens']}-TOKEN CAP"
+                "SHORT CODE • END-TO-END • "
+                f"{settings['concurrency_tokens']}-TOKEN CAP PER AGENT"
             ),
-            line("AGGREGATE   " + "  |  ".join(values) + " tok/s"),
+            line("AGGREGATE   " + "  •  ".join(values) + " tok/s"),
         ))
     lines.extend((
-        rule("╠", "═", "╣"),
-        line(f"RECEIPT   sha256:{fingerprint[:16]}…"),
-        line("SCREENSHOT → POST TO X • LINK THE JSON RECEIPT • #RigMark"),
+        section("PROOF"),
+        line(f"RECEIPT    sha256:{fingerprint[:16]}…"),
+        line("SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK"),
         line("github.com/alexellis/rigmark"),
-        rule("╚", "═", "╝"),
+        rule("╰", "─", "╯"),
     ))
     return "\n".join(lines)
 
@@ -126,13 +134,19 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
 def colourise(card: str) -> str:
     cyan = "\033[96m"
     gold = "\033[93m"
+    white = "\033[97m"
+    dim = "\033[90m"
     green = "\033[92m"
     reset = "\033[0m"
     output = []
     for current in card.splitlines():
-        colour = gold if "REAL OUTPUT" in current else cyan
-        if "OUTPUT" in current or "PASS" in current:
+        colour = dim if current.startswith(("├", "╭", "╰")) else white
+        if "R I G M A R K" in current or "REAL OUTPUT" in current:
+            colour = gold
+        elif "●" in current or "✓" in current:
             colour = green
+        elif "RECEIPT" in current or "github.com" in current:
+            colour = cyan
         output.append(colour + current + reset)
     return "\n".join(output)
 

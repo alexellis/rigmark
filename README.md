@@ -1,10 +1,13 @@
 # RigMark
 
-**Real output. Honest speed. Receipts included.**
+![RigMark — benchmark local AI the way coding agents actually use it](docs/images/rigmark-hero.png)
 
-RigMark is a reproducible stress test for OpenAI-compatible LLM appliances. It compares
-realistic code and prose decode, an explicitly labelled structured-output
-ceiling, exact cold/warm prefill, and concurrent service behaviour.
+**RigMark benchmarks local AI the way coding agents actually use it.**
+
+Most AI benchmarks reduce a serving stack to one flattering number. RigMark is
+a reproducible stress test for the whole OpenAI-compatible appliance: completed
+code and prose, an explicitly labelled structured-output ceiling, exact
+cold/warm prefill, and concurrent agent behaviour.
 
 It is deliberately model-agnostic: use it with Qwen, GLM, DeepSeek, vLLM,
 SGLang, local GPU servers, or multi-node DGX Spark recipes. A different model or
@@ -14,29 +17,31 @@ required before claiming a topology-only speed-up.
 ## One screenshot, one receipt
 
 ```text
-╔════════════════════════════════════════════════════════════════════════════════╗
-║ R I G M A R K  //  REAL OUTPUT. HONEST SPEED. RECEIPTS INCLUDED.               ║
-║ OUTPUT  //  15/15 COMPLETE                                                     ║
-║                                                                                ║
-║ MODEL     Qwen3.8-27B-FP8-vllm                                                 ║
-║ HARDWARE  1x NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB          ║
-║ MODE      reasoning=low  protocol=1.0.0                                        ║
-║ BENCH     git:046e92cbe941  //  clean                                          ║
-╠════════════════════════════════════════════════════════════════════════════════╣
-║ REAL OUTPUT  //  MEDIAN [RANGE]  //  COMPLETION GATE                           ║
-║ CODE        129.5 tok/s  [124.0–130.4]  PASS 5/5                               ║
-║ PROSE        84.2 tok/s  [81.9–100.1]  PASS 5/5                                ║
-║ STRUCTURED  136.0 tok/s  [135.0–136.1]  PASS 5/5                               ║
-╠════════════════════════════════════════════════════════════════════════════════╣
-║ PREFILL   64K cold 5,808 tok/s  //  replay 85,248 tok/s                        ║
-╠════════════════════════════════════════════════════════════════════════════════╣
-║ SHORT CODE LOAD  //  END-TO-END  //  256-TOKEN CAP                             ║
-║ AGGREGATE   C1 108.7  |  C2 206.0  |  C4 385.4 tok/s                           ║
-╠════════════════════════════════════════════════════════════════════════════════╣
-║ RECEIPT   sha256:604ea2c48107a69f…                                             ║
-║ SCREENSHOT → POST TO X • LINK THE JSON RECEIPT • #RigMark                      ║
-║ github.com/alexellis/rigmark                                                   ║
-╚════════════════════════════════════════════════════════════════════════════════╝
+╭──────────────────────────────────────────────────────────────────────────────────────────╮
+│  R I G M A R K   //   AGENT WORKLOAD RECEIPT                                             │
+│  BENCHMARKS LOCAL AI THE WAY CODING AGENTS ACTUALLY USE IT                               │
+│  ●  15/15 OUTPUTS COMPLETE                                                               │
+├─ SYSTEM ─────────────────────────────────────────────────────────────────────────────────┤
+│  MODEL      Qwen3.8-27B-FP8-vllm                                                         │
+│  APPLIANCE  1x NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB                  │
+│  RUN        reasoning=low  •  protocol=1.0.0                                             │
+│  SOURCE     git:046e92cbe941  •  clean                                                   │
+├─ REAL OUTPUT ────────────────────────────────────────────────────────────────────────────┤
+│  WORKLOAD                 MEDIAN          OBSERVED RANGE          COMPLETE               │
+│  CODE                 129.5 tok/s      124.0–130.4           ✓ 5/5                       │
+│  PROSE                 84.2 tok/s       81.9–100.1           ✓ 5/5                       │
+│  STRUCTURED*          136.0 tok/s      135.0–136.1           ✓ 5/5                       │
+│  * predictable-output ceiling; not a proxy for agent speed                               │
+├─ CONTEXT ────────────────────────────────────────────────────────────────────────────────┤
+│  64K PREFILL   cold 5,808 tok/s  •  cached replay 85,248 tok/s                           │
+├─ MULTI-AGENT LOAD ───────────────────────────────────────────────────────────────────────┤
+│  SHORT CODE • END-TO-END • 256-TOKEN CAP PER AGENT                                       │
+│  AGGREGATE   C1 108.7  •  C2 206.0  •  C4 385.4 tok/s                                    │
+├─ PROOF ──────────────────────────────────────────────────────────────────────────────────┤
+│  RECEIPT    sha256:604ea2c48107a69f…                                                     │
+│  SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK                                       │
+│  github.com/alexellis/rigmark                                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 The card is the shareable headline. It always shows the benchmark Git revision
