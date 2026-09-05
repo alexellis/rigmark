@@ -1,0 +1,15 @@
+{
+  "hardware": "2x NVIDIA DGX Spark",
+  "topology": "TP2, direct-link RoCE",
+  "negotiated_link_speed": "200 Gb/s per port",
+  "model": "organisation/model-name",
+  "model_revision": "immutable commit or digest",
+  "quantisation": "NVFP4",
+  "kv_cache_dtype": "FP8",
+  "serving_engine": "vLLM fork and immutable revision",
+  "serving_image": "container image digest",
+  "drafter": "DFlash2 configuration or none",
+  "context_limit": 262144,
+  "scheduler": "relevant flags",
+  "competing_traffic": "none"
+}

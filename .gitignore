@@ -1,0 +1,4 @@
+results/
+metadata.json
+__pycache__/
+*.pyc
