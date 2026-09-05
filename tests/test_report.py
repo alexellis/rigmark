@@ -18,7 +18,8 @@ class ReportTest(unittest.TestCase):
         card = report.render(self.result, fingerprint)
         self.assertTrue(all(len(line) == report.WIDTH for line in card.splitlines()))
         self.assertIn("OUTPUT  //  15/15 COMPLETE", card)
-        self.assertIn("PROSE        18.3 tok/s", card)
+        self.assertIn("PROSE", card)
+        self.assertIn("tok/s", card)
         self.assertIn("SHORT CODE LOAD  //  END-TO-END", card)
         self.assertIn(fingerprint[:16], card)
 

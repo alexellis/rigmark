@@ -1,0 +1,22 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║ R I G M A R K  //  REAL OUTPUT. HONEST SPEED. RECEIPTS INCLUDED.               ║
+║ OUTPUT  //  15/15 COMPLETE                                                     ║
+║                                                                                ║
+║ MODEL     glm-5.3-flash                                                        ║
+║ HARDWARE  2x NVIDIA DGX Spark (GB10)                                           ║
+║ MODE      reasoning=low  protocol=1.0.0                                        ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ REAL OUTPUT  //  MEDIAN [RANGE]  //  COMPLETION GATE                           ║
+║ CODE         44.0 tok/s  [31.6–47.7]  PASS 5/5                                 ║
+║ PROSE        18.9 tok/s  [17.8–19.3]  PASS 5/5                                 ║
+║ STRUCTURED   64.9 tok/s  [63.9–66.8]  PASS 5/5                                 ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ PREFILL   64K cold 1,922 tok/s  //  replay 11,363 tok/s                        ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ SHORT CODE LOAD  //  END-TO-END  //  256-TOKEN CAP                             ║
+║ AGGREGATE   C1 31.6  |  C2 42.0  |  C4 66.1 tok/s                              ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ RECEIPT   sha256:d117be1f778c55fa…                                             ║
+║ SCREENSHOT → POST TO X • LINK THE JSON RECEIPT • #RigMark                      ║
+║ github.com/alexellis/rigmark                                                   ║
+╚════════════════════════════════════════════════════════════════════════════════╝

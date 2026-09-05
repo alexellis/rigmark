@@ -1,0 +1,22 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║ R I G M A R K  //  REAL OUTPUT. HONEST SPEED. RECEIPTS INCLUDED.               ║
+║ OUTPUT  //  15/15 COMPLETE                                                     ║
+║                                                                                ║
+║ MODEL     deepseek-v4-flash-0731                                               ║
+║ HARDWARE  2x NVIDIA DGX Spark (GB10)                                           ║
+║ MODE      reasoning=low  protocol=1.0.0                                        ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ REAL OUTPUT  //  MEDIAN [RANGE]  //  COMPLETION GATE                           ║
+║ CODE         72.9 tok/s  [69.7–74.1]  PASS 5/5                                 ║
+║ PROSE        48.1 tok/s  [43.9–55.5]  PASS 5/5                                 ║
+║ STRUCTURED   85.2 tok/s  [84.3–85.9]  PASS 5/5                                 ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ PREFILL   64K cold 1,628 tok/s  //  replay 172,715 tok/s                       ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ SHORT CODE LOAD  //  END-TO-END  //  256-TOKEN CAP                             ║
+║ AGGREGATE   C1 51.2  |  C2 82.9  |  C4 127.4 tok/s                             ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║ RECEIPT   sha256:4749832195b34dc9…                                             ║
+║ SCREENSHOT → POST TO X • LINK THE JSON RECEIPT • #RigMark                      ║
+║ github.com/alexellis/rigmark                                                   ║
+╚════════════════════════════════════════════════════════════════════════════════╝
