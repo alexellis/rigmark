@@ -255,9 +255,11 @@ def run_decode(
             row = client.stream("/v1/chat/completions", payload)
             row["run"] = index + 1
             if name == "structured":
-                row["structured_validation"] = validate_structured_output(
+                row["completion_validation"] = validate_structured_output(
                     row["output"]
                 )
+            else:
+                row["completion_validation"] = validate_visible_output(row)
             rows.append(row)
             print(
                 f"  {index + 1}: {row['decode_tokens_per_second']:.1f} tok/s, "
@@ -269,6 +271,12 @@ def run_decode(
             "runs": rows,
             "decode_tokens_per_second": summarise(rows, "decode_tokens_per_second"),
             "ttft_seconds": summarise(rows, "ttft_seconds"),
+            "completion_gate": {
+                "passed": sum(
+                    1 for row in rows if row["completion_validation"]["valid"]
+                ),
+                "total": len(rows),
+            },
         }
     return output
 
@@ -283,6 +291,14 @@ def validate_structured_output(output: str) -> dict[str, Any]:
     for index, item in enumerate(value, start=1):
         if item != {"index": index, "square": index * index}:
             return {"valid": False, "error": f"incorrect object at index {index}"}
+    return {"valid": True}
+
+
+def validate_visible_output(row: dict[str, Any]) -> dict[str, Any]:
+    if not row.get("output", "").strip():
+        return {"valid": False, "error": "no visible answer"}
+    if row.get("finish_reason") == "length":
+        return {"valid": False, "error": "answer hit the token limit"}
     return {"valid": True}
 
 
@@ -492,7 +508,7 @@ def main() -> None:
     parser.add_argument("--model", default="auto")
     parser.add_argument("--api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--runs", type=int, default=5)
-    parser.add_argument("--decode-tokens", type=int, default=512)
+    parser.add_argument("--decode-tokens", type=int, default=2048)
     parser.add_argument("--prefill-depths", type=comma_ints, default=comma_ints("8192,32768,65536"))
     parser.add_argument("--prefill-runs", type=int, default=3)
     parser.add_argument("--concurrency", type=comma_ints, default=comma_ints("1,2,4"))

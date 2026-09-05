@@ -34,11 +34,20 @@ It deliberately excludes prefill. Server-reported token usage is mandatory.
 The report publishes the median, minimum, maximum, and p90 of every workload;
 the best run is never the headline.
 
+Completion tokens and decode timing cover the complete streamed generation,
+including reasoning where a server exposes it separately from visible output.
+The result records visible and reasoning character counts independently, and
+the completion gate prevents a reasoning-only stream from being called a
+completed code or prose answer.
+
 Structured JSON is an explicitly labelled speculative-decoding ceiling. It is
 not a proxy for prose, coding, or agent responsiveness. Its output is checked
 against the requested array and every result records whether validation passed.
 Visible outputs are retained so that code, prose, truncation, and looping can
 be audited. Reasoning text is represented only by its character count and hash.
+Code and prose pass the completion gate only when they emit a non-empty visible
+answer without a length stop. This is not a correctness score, but prevents
+reasoning-only or truncated streams from masquerading as completed work.
 
 ## Prefill
 

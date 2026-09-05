@@ -48,6 +48,20 @@ class BenchTest(unittest.TestCase):
         )
         self.assertFalse(bench.validate_structured_output("[1, 2]")["valid"])
 
+    def test_visible_output_validation(self):
+        self.assertTrue(bench.validate_visible_output({
+            "output": "A complete answer.",
+            "finish_reason": "stop",
+        })["valid"])
+        self.assertFalse(bench.validate_visible_output({
+            "output": "A truncated answer",
+            "finish_reason": "length",
+        })["valid"])
+        self.assertFalse(bench.validate_visible_output({
+            "output": "",
+            "finish_reason": "length",
+        })["valid"])
+
 
 if __name__ == "__main__":
     unittest.main()

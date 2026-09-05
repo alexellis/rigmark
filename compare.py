@@ -137,6 +137,17 @@ def main() -> None:
             f"{format_summary(rhs, precision)} | {ratio_text} |"
         )
 
+    print("\n| Completion gate | " + left_label + " | " + right_label + " |")
+    print("|---|---:|---:|")
+    for workload in ("code", "prose", "structured"):
+        left_gate = nested(left, "decode", workload, "completion_gate")
+        right_gate = nested(right, "decode", workload, "completion_gate")
+        print(
+            f"| {workload.title()} | "
+            f"{left_gate['passed']}/{left_gate['total']} | "
+            f"{right_gate['passed']}/{right_gate['total']} |"
+        )
+
     if left["run"].get("model") != right["run"].get("model"):
         print("\nWarning: model IDs differ; this is an appliance comparison, not a topology-only comparison.")
     if mismatches:

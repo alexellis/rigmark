@@ -34,7 +34,7 @@ identical; use a new ID for the next sweep.
 
 The default suite performs:
 
-- five 512-token runs of code, prose, and structured JSON;
+- five runs of code, prose, and structured JSON with a 2,048-token ceiling;
 - three cold/immediate-warm pairs at 8,192, 32,768, and 65,536 tokens; and
 - three rounds of code at concurrency 1, 2, and 4 with 256-token outputs.
 
@@ -43,6 +43,10 @@ nor API credentials are written to the result. Credentials are read from
 `OPENAI_API_KEY` by default; use `--api-key-env NAME` to select another
 environment variable. Visible generated output is retained for auditability;
 reasoning text is not retained, although its size and hash are recorded.
+Every decode workload has a completion gate. Code and prose must emit a visible
+answer without hitting the token ceiling; structured JSON must match every
+requested value. Throughput from a failed gate remains diagnostic but must not
+be cited as a successful workload result.
 
 For an engine without vLLM's `/tokenize` extension or token-ID completion
 input, add `--skip-prefill`. To omit load testing, add `--skip-concurrency`.
