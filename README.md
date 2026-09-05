@@ -1,6 +1,8 @@
-# LLM appliance bench
+# RigMark
 
-A reproducible stress test for OpenAI-compatible LLM appliances. It compares
+**Real output. Honest speed.**
+
+RigMark is a reproducible stress test for OpenAI-compatible LLM appliances. It compares
 realistic code and prose decode, an explicitly labelled structured-output
 ceiling, exact cold/warm prefill, and concurrent service behaviour.
 
@@ -14,23 +16,26 @@ required before claiming a topology-only speed-up.
 Python 3.10 or newer is required; there are no third-party packages.
 
 ```bash
-git clone https://github.com/alexellis/llm-appliance-bench
-cd llm-appliance-bench
-cp metadata.example.json metadata.json
+git clone https://github.com/alexellis/rigmark
+cd rigmark
+./rigmark configure
 
-python3 bench.py \
+./rigmark run \
   --base-url http://SERVER:8000 \
   --model auto \
   --label my-appliance \
   --comparison-id weekend-sweep-1 \
-  --metadata metadata.json \
-  --extra-body '{"chat_template_kwargs":{"enable_thinking":true}}'
+  --metadata metadata.json
 ```
 
-Start by copying [`metadata.example.json`](metadata.example.json) and record the
-hardware and complete serving recipe. Use the same comparison ID for every
-appliance in one A/B sweep. This makes every generated prompt byte-for-byte
-identical; use a new ID for the next sweep.
+The configurator explains every metadata field and writes the ignored local
+`metadata.json`. See [`METADATA.md`](METADATA.md) if an agent is filling it in
+for you. The benchmark refuses unchanged placeholders or missing required
+fields. Use the same comparison ID for every appliance in one A/B sweep. This
+makes every generated prompt byte-for-byte identical; use a new ID for the next
+sweep. If the model supports graded effort or a thinking toggle, set it
+explicitly with `--extra-body` and use the identical value throughout the
+sweep; model defaults are not assumed equivalent.
 
 The default suite performs:
 
@@ -48,13 +53,23 @@ answer without hitting the token ceiling; structured JSON must match every
 requested value. Throughput from a failed gate remains diagnostic but must not
 be cited as a successful workload result.
 
+At the end, the runner prints a terminal result card designed to be
+screenshotted. Reprint it at any time with:
+
+```bash
+./rigmark report results/YOUR-RESULT.json
+```
+
+Share the card with the complete JSON—the card is the headline, and the JSON
+is the receipt.
+
 For an engine without vLLM's `/tokenize` extension or token-ID completion
 input, add `--skip-prefill`. To omit load testing, add `--skip-concurrency`.
 
 ## Compare two results
 
 ```bash
-python3 compare.py results/recipe-a.json results/recipe-b.json
+./rigmark compare results/recipe-a.json results/recipe-b.json
 ```
 
 The comparison stops when the protocol, prompt corpus, thinking/request body,
@@ -85,7 +100,7 @@ current table and exact commands.
 
 ```bash
 python3 -m unittest discover -s tests -v
-python3 -m py_compile bench.py compare.py
+python3 -m py_compile bench.py compare.py configure.py report.py rigmark
 ```
 
 ## Licence

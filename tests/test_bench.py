@@ -1,5 +1,7 @@
 import json
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import bench
 
@@ -61,6 +63,31 @@ class BenchTest(unittest.TestCase):
             "output": "",
             "finish_reason": "length",
         })["valid"])
+
+    def test_metadata_rejects_placeholders(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "metadata.json"
+            path.write_text('{"hardware": "CHANGE ME"}')
+            with self.assertRaises(ValueError):
+                bench.load_metadata(path)
+
+    def test_metadata_rejects_zero_context(self):
+        metadata = {
+            "hardware": "GPU",
+            "topology": "TP1",
+            "model": "example/model",
+            "model_revision": "abc123",
+            "quantisation": "FP8",
+            "kv_cache_dtype": "FP8",
+            "serving_engine": "engine 1",
+            "context_limit": 0,
+            "competing_traffic": "none",
+        }
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "metadata.json"
+            path.write_text(json.dumps(metadata))
+            with self.assertRaises(ValueError):
+                bench.load_metadata(path)
 
 
 if __name__ == "__main__":

@@ -496,6 +496,33 @@ def load_metadata(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text())
     if not isinstance(value, dict) or not value:
         raise ValueError("metadata must be a non-empty JSON object")
+    required = {
+        "hardware", "topology", "model", "model_revision", "quantisation",
+        "kv_cache_dtype", "serving_engine", "context_limit",
+        "competing_traffic",
+    }
+    missing = sorted(required.difference(value))
+    if missing:
+        raise ValueError("metadata is missing required fields: " + ", ".join(missing))
+
+    def contains_placeholder(item: Any) -> bool:
+        if isinstance(item, str):
+            return "CHANGE ME" in item.upper()
+        if isinstance(item, dict):
+            return any(contains_placeholder(child) for child in item.values())
+        if isinstance(item, list):
+            return any(contains_placeholder(child) for child in item)
+        return False
+
+    if contains_placeholder(value):
+        raise ValueError(
+            "metadata still contains CHANGE ME placeholders; run configure.py"
+        )
+    context_limit = value["context_limit"]
+    if isinstance(context_limit, bool) or not isinstance(context_limit, int):
+        raise ValueError("metadata context_limit must be a whole number")
+    if context_limit < 1:
+        raise ValueError("metadata context_limit must be greater than zero")
     return value
 
 
@@ -620,6 +647,13 @@ def main() -> None:
 
     result["run"]["finished_at"] = datetime.now(timezone.utc).isoformat()
     write_result(result, output)
+    try:
+        from report import print_report
+
+        print()
+        print_report(result, output)
+    except (KeyError, OSError, TypeError, ValueError) as error:
+        print(f"warning: could not render terminal report: {error}", file=sys.stderr)
 
 
 if __name__ == "__main__":

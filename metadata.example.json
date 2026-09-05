@@ -1,15 +1,15 @@
 {
-  "hardware": "2x NVIDIA DGX Spark",
-  "topology": "TP2, direct-link RoCE",
-  "negotiated_link_speed": "200 Gb/s per port",
-  "model": "organisation/model-name",
-  "model_revision": "immutable commit or digest",
-  "quantisation": "NVFP4",
-  "kv_cache_dtype": "FP8",
-  "serving_engine": "vLLM fork and immutable revision",
-  "serving_image": "container image digest",
-  "drafter": "DFlash2 configuration or none",
-  "context_limit": 262144,
-  "scheduler": "relevant flags",
-  "competing_traffic": "none"
+  "hardware": "CHANGE ME: exact GPU/appliance names and count",
+  "topology": "CHANGE ME: TP size and physical/network topology",
+  "negotiated_link_speed": "CHANGE ME: measured rate, or not applicable",
+  "model": "CHANGE ME: organisation/model-name or local checkpoint",
+  "model_revision": "CHANGE ME: immutable commit, digest, or local fingerprint",
+  "quantisation": "CHANGE ME: weight and activation format",
+  "kv_cache_dtype": "CHANGE ME: KV format",
+  "serving_engine": "CHANGE ME: engine name and exact version/commit",
+  "serving_image": "CHANGE ME: immutable image digest, or not applicable",
+  "drafter": "CHANGE ME: method, draft depth, and sampling, or none",
+  "context_limit": 0,
+  "scheduler": "CHANGE ME: max sequences, batch tokens, and relevant flags",
+  "competing_traffic": "CHANGE ME: none, or describe every co-tenant"
 }

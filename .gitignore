@@ -1,6 +1,7 @@
 results/*
 !results/reference/
 !results/reference/*.json
-metadata.json
+metadata*.json
+!metadata.example.json
 __pycache__/
 *.pyc

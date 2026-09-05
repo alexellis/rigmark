@@ -111,7 +111,7 @@ def main() -> None:
     for level in left.get("settings", {}).get("concurrency", []):
         metrics.extend((
             (
-                f"C{level} aggregate end-to-end tok/s",
+                f"C{level} short code-load end-to-end tok/s",
                 ("concurrency", str(level), "aggregate_end_to_end_tokens_per_second"),
             ),
             (

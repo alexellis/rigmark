@@ -16,9 +16,9 @@ NVFP4 checkpoint, FP8 E4M3 KV, native `flashinfer_cutlass`, and DFlash2 at
 | Valid structured decode | 67.3 tok/s | 63.3–67.6 |
 | Cold 64K prefill | 1,920 tok/s | 1,919–1,922 |
 | Warm 64K replay | 11,359 tok/s | 11,346–11,370 |
-| C1 aggregate | 28.2 tok/s | 23.7–29.2 |
-| C2 aggregate | 42.6 tok/s | 28.8–43.2 |
-| C4 aggregate | 59.5 tok/s | 44.6–69.1 |
+| C1 short code-load, end-to-end (256-token cap) | 28.2 tok/s | 23.7–29.2 |
+| C2 short code-load, end-to-end (256-token cap) | 42.6 tok/s | 28.8–43.2 |
+| C4 short code-load, end-to-end (256-token cap) | 59.5 tok/s | 44.6–69.1 |
 
 All three decode workloads passed **5/5** completion gates. The roughly 3.7×
 gap between valid structured output and completed prose on the same appliance
