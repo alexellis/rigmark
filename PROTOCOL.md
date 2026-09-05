@@ -81,7 +81,9 @@ commit, quantisation, KV configuration, context limit, speculative depth, and
 whether any other traffic shared the endpoint.
 
 The JSON receipt and every share card record the benchmark repository commit
-and whether its worktree was dirty when the run began. Dirty runs are retained,
+and whether its worktree was dirty when the run began. Source archives embed
+the originating Git commit in `.git_archival.txt`, so the same revision is
+recorded when the `.git` directory is unavailable. Dirty runs are retained,
 not rejected. They include a fingerprint over tracked changes, untracked paths,
 and untracked file contents, but a clean committed revision remains preferable
 for a reproducible public reference.

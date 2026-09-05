@@ -30,6 +30,22 @@ class BenchTest(unittest.TestCase):
             bench.nonce("sweep-2", "decode", "code", 1),
         )
 
+    def test_archival_identity_reads_exported_commit(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / ".git_archival.txt"
+            path.write_text("node: " + "a" * 40 + "\nref-names: HEAD\n")
+            self.assertEqual({
+                "repository_revision": "a" * 40,
+                "repository_dirty": False,
+                "repository_source": "git-archive",
+            }, bench.archival_identity(path))
+
+    def test_archival_identity_rejects_unexpanded_placeholder(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / ".git_archival.txt"
+            path.write_text("node: $Format:%H$\n")
+            self.assertIsNone(bench.archival_identity(path))
+
     def test_rejects_credentials_in_url(self):
         with self.assertRaises(ValueError):
             bench.validate_base_url("https://user:password@example.com")

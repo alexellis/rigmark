@@ -172,6 +172,26 @@ def load_prompts(path: Path) -> tuple[dict[str, Any], str]:
     return json.loads(raw), hashlib.sha256(raw).hexdigest()
 
 
+def archival_identity(path: Path = HERE / ".git_archival.txt") -> dict[str, Any] | None:
+    """Return the commit embedded by git archive when .git is unavailable."""
+    try:
+        values = dict(
+            line.split(":", 1)
+            for line in path.read_text().splitlines()
+            if ":" in line
+        )
+    except OSError:
+        return None
+    revision = values.get("node", "").strip()
+    if not re.fullmatch(r"[0-9a-fA-F]{40,64}", revision):
+        return None
+    return {
+        "repository_revision": revision.lower(),
+        "repository_dirty": False,
+        "repository_source": "git-archive",
+    }
+
+
 def git_identity() -> dict[str, Any]:
     try:
         revision = subprocess.check_output(
@@ -186,6 +206,7 @@ def git_identity() -> dict[str, Any]:
         identity: dict[str, Any] = {
             "repository_revision": revision,
             "repository_dirty": bool(status),
+            "repository_source": "git-worktree",
         }
         if status:
             diff = subprocess.check_output(
@@ -209,9 +230,10 @@ def git_identity() -> dict[str, Any]:
             identity["repository_worktree_sha256"] = worktree.hexdigest()
         return identity
     except (OSError, subprocess.CalledProcessError):
-        return {
+        return archival_identity() or {
             "repository_revision": "unknown",
             "repository_dirty": None,
+            "repository_source": "unknown",
         }
 
 

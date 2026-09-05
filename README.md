@@ -40,7 +40,9 @@ required before claiming a topology-only speed-up.
 ```
 
 The card is the shareable headline. It always shows the benchmark Git revision
-and whether that worktree was clean or dirty. The content-hashed
+and whether that worktree was clean or dirty. GitHub source archives embed the
+originating commit too, so downloading a tarball does not lose the benchmark
+revision. The content-hashed
 [result JSON](results/reference/qwen38-27b-fp8-rtxpro6000-low.json) is the
 receipt: complete outputs, ranges, TTFT, settings, and appliance metadata.
 
