@@ -48,7 +48,9 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
         result["decode"][name]["completion_gate"]
         for name in ("code", "prose", "structured")
     ]
-    verified = all(gate["passed"] == gate["total"] for gate in gates)
+    passed = sum(gate["passed"] for gate in gates)
+    total = sum(gate["total"] for gate in gates)
+    complete = passed == total
     effort = (
         settings.get("extra_body", {})
         .get("chat_template_kwargs", {})
@@ -56,8 +58,12 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
     )
     lines = [
         rule("╔", "═", "╗"),
-        line("R I G M A R K  //  REAL OUTPUT. HONEST SPEED."),
-        line("RESULT  //  " + ("VERIFIED" if verified else "INCOMPLETE — DO NOT HEADLINE")),
+        line("R I G M A R K  //  REAL OUTPUT. HONEST SPEED. RECEIPTS INCLUDED."),
+        line(
+            f"OUTPUT  //  {passed}/{total} COMPLETE"
+            if complete else
+            f"OUTPUT  //  {passed}/{total} COMPLETE — DO NOT HEADLINE"
+        ),
         line(),
         line(f"MODEL     {run['model']}"),
         line(f"HARDWARE  {appliance.get('hardware', 'unspecified')}"),
@@ -112,7 +118,7 @@ def colourise(card: str) -> str:
     output = []
     for current in card.splitlines():
         colour = gold if "REAL OUTPUT" in current else cyan
-        if "VERIFIED RUN" in current or "PASS" in current:
+        if "OUTPUT" in current or "PASS" in current:
             colour = green
         output.append(colour + current + reset)
     return "\n".join(output)

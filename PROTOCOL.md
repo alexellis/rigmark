@@ -79,3 +79,8 @@ Publish the unedited JSON file and the exact command. Also disclose hardware,
 topology, negotiated link speed, model and drafter revisions, serving image or
 commit, quantisation, KV configuration, context limit, speculative depth, and
 whether any other traffic shared the endpoint.
+
+The receipt records the benchmark repository commit and whether its worktree
+was dirty when the run began. Dirty runs include a worktree fingerprint and
+remain useful for development, but a clean committed revision is required for
+a reproducible public reference.

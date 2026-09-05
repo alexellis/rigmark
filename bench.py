@@ -172,14 +172,36 @@ def load_prompts(path: Path) -> tuple[dict[str, Any], str]:
     return json.loads(raw), hashlib.sha256(raw).hexdigest()
 
 
-def git_revision() -> str:
+def git_identity() -> dict[str, Any]:
     try:
-        return subprocess.check_output(
+        revision = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=HERE, text=True,
             stderr=subprocess.DEVNULL,
         ).strip()
+        status = subprocess.check_output(
+            ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+            cwd=HERE,
+            stderr=subprocess.DEVNULL,
+        )
+        identity: dict[str, Any] = {
+            "repository_revision": revision,
+            "repository_dirty": bool(status),
+        }
+        if status:
+            diff = subprocess.check_output(
+                ["git", "diff", "--binary", "HEAD"],
+                cwd=HERE,
+                stderr=subprocess.DEVNULL,
+            )
+            identity["repository_worktree_sha256"] = hashlib.sha256(
+                status + b"\0" + diff
+            ).hexdigest()
+        return identity
     except (OSError, subprocess.CalledProcessError):
-        return "unknown"
+        return {
+            "repository_revision": "unknown",
+            "repository_dirty": None,
+        }
 
 
 def summarise(rows: list[dict[str, Any]], key: str) -> dict[str, float]:
@@ -535,7 +557,7 @@ def main() -> None:
     parser.add_argument("--model", default="auto")
     parser.add_argument("--api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--runs", type=int, default=5)
-    parser.add_argument("--decode-tokens", type=int, default=3072)
+    parser.add_argument("--decode-tokens", type=int, default=4096)
     parser.add_argument("--prefill-depths", type=comma_ints, default=comma_ints("8192,32768,65536"))
     parser.add_argument("--prefill-runs", type=int, default=3)
     parser.add_argument("--concurrency", type=comma_ints, default=comma_ints("1,2,4"))
@@ -574,11 +596,12 @@ def main() -> None:
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     output = args.output or Path("results") / f"{filename_label}-{timestamp}.json"
+    repository = git_identity()
     result: dict[str, Any] = {
         "schema": 1,
         "protocol": {
             "version": PROTOCOL_VERSION,
-            "repository_revision": git_revision(),
+            **repository,
             "prompts_version": prompts["version"],
             "prompts_sha256": prompts_sha256,
         },

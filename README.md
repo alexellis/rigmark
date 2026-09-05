@@ -1,6 +1,6 @@
 # RigMark
 
-**Real output. Honest speed.**
+**Real output. Honest speed. Receipts included.**
 
 RigMark is a reproducible stress test for OpenAI-compatible LLM appliances. It compares
 realistic code and prose decode, an explicitly labelled structured-output
@@ -39,7 +39,7 @@ sweep; model defaults are not assumed equivalent.
 
 The default suite performs:
 
-- five runs of code, prose, and structured JSON with a 3,072-token ceiling;
+- five runs of code, prose, and structured JSON with a 4,096-token ceiling;
 - three cold/immediate-warm pairs at 8,192, 32,768, and 65,536 tokens; and
 - three rounds of code at concurrency 1, 2, and 4 with 256-token outputs.
 
