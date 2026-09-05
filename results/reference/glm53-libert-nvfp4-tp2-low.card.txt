@@ -1,25 +1,26 @@
 ╭──────────────────────────────────────────────────────────────────────────────────────────╮
 │  R I G M A R K   //   AGENT WORKLOAD RECEIPT                                             │
-│  BENCHMARKS LOCAL AI THE WAY CODING AGENTS ACTUALLY USE IT                               │
-│  ●  15/15 OUTPUTS COMPLETE                                                               │
+│  BENCHMARKS LOCAL AI HOW CODING AGENTS ACTUALLY USE IT                                   │
+│  ●  15/15 BASIC OUTPUT GATES PASSED                                                      │
 ├─ SYSTEM ─────────────────────────────────────────────────────────────────────────────────┤
 │  MODEL      glm-5.3-flash                                                                │
 │  APPLIANCE  2x NVIDIA DGX Spark (GB10)                                                   │
 │  RUN        reasoning=low  •  protocol=1.0.0                                             │
 │  SOURCE     git:046e92cbe941  •  clean                                                   │
 ├─ REAL OUTPUT ────────────────────────────────────────────────────────────────────────────┤
-│  WORKLOAD                 MEDIAN          OBSERVED RANGE          COMPLETE               │
-│  CODE                  44.0 tok/s       31.6–47.7            ✓ 5/5                       │
-│  PROSE                 18.9 tok/s       17.8–19.3            ✓ 5/5                       │
-│  STRUCTURED*           64.9 tok/s       63.9–66.8            ✓ 5/5                       │
+│  WORKLOAD       DECODE EST.      LAST OUTPUT          RANGE          BASIC GATE          │
+│  CODE              44.0 tok/s      46.4s last     31.6–47.7     ✓ 5/5                    │
+│  PROSE             18.9 tok/s      55.7s last     17.8–19.3     ✓ 5/5                    │
+│  STRUCTURED*       64.9 tok/s       7.3s last     63.9–66.8     ✓ 5/5                    │
 │  * predictable-output ceiling; not a proxy for agent speed                               │
 ├─ CONTEXT ────────────────────────────────────────────────────────────────────────────────┤
-│  64K PREFILL   cold 1,922 tok/s  •  cached replay 11,363 tok/s                           │
-├─ MULTI-AGENT LOAD ───────────────────────────────────────────────────────────────────────┤
+│  64K PREFILL   cold 1,922 tok/s  •  immediate replay 11,363 tok/s                        │
+├─ CAPPED CONCURRENT GENERATION ───────────────────────────────────────────────────────────┤
 │  SHORT CODE • END-TO-END • 256-TOKEN CAP PER AGENT                                       │
 │  AGGREGATE   C1 31.6  •  C2 42.0  •  C4 66.1 tok/s                                       │
-├─ PROOF ──────────────────────────────────────────────────────────────────────────────────┤
-│  RECEIPT    sha256:d117be1f778c55fa…                                                     │
+│  C4 OUTPUT STATE   normal stop 0/12  •  visible 12/12  •  reasoning may be included      │
+├─ RECEIPT ────────────────────────────────────────────────────────────────────────────────┤
+│  JSON       sha256:d117be1f778c55fa…                                                     │
 │  SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK                                       │
 │  github.com/alexellis/rigmark                                                            │
 ╰──────────────────────────────────────────────────────────────────────────────────────────╯

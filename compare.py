@@ -7,12 +7,22 @@ import argparse
 import hashlib
 import json
 import os
+import statistics
 import sys
 from pathlib import Path
 from typing import Any
 
+from receipt import validate_result
+
 
 CARD_WIDTH = 104
+MISSING = object()
+
+
+def depth_label(depth: int) -> str:
+    if depth >= 1_024 and depth % 1_024 == 0:
+        return f"{depth // 1_024}K"
+    return f"{depth:,} TOKENS"
 
 
 def nested(value: dict[str, Any], *keys: str) -> Any:
@@ -21,15 +31,25 @@ def nested(value: dict[str, Any], *keys: str) -> Any:
     return value
 
 
+def comparable_value(value: dict[str, Any], path: tuple[str, ...]) -> Any:
+    try:
+        return nested(value, *path)
+    except (KeyError, TypeError):
+        return MISSING
+
+
 def comparable(left: dict[str, Any], right: dict[str, Any]) -> list[str]:
     paths = (
         ("protocol", "version"),
         ("protocol", "prompts_sha256"),
+        ("protocol", "repository_revision"),
+        ("protocol", "repository_dirty"),
         ("run", "comparison_id"),
         ("settings", "runs"),
         ("settings", "decode_tokens"),
         ("settings", "temperature"),
         ("settings", "top_p"),
+        ("settings", "seed"),
         ("settings", "extra_body"),
         ("settings", "prefill_depths"),
         ("settings", "prefill_runs"),
@@ -38,11 +58,40 @@ def comparable(left: dict[str, Any], right: dict[str, Any]) -> list[str]:
         ("settings", "concurrency_tokens"),
         ("settings", "concurrency_workload"),
     )
-    return [
-        ".".join(path)
-        for path in paths
-        if nested(left, *path) != nested(right, *path)
-    ]
+    mismatches = [f"left receipt: {error}" for error in validate_result(left)]
+    mismatches.extend(f"right receipt: {error}" for error in validate_result(right))
+    for path in paths:
+        left_value = comparable_value(left, path)
+        right_value = comparable_value(right, path)
+        if (
+            left_value is MISSING
+            or right_value is MISSING
+            or left_value != right_value
+        ):
+            mismatches.append(".".join(path))
+    if (
+        comparable_value(left, ("protocol", "repository_dirty")) is True
+        and comparable_value(right, ("protocol", "repository_dirty")) is True
+    ):
+        path = ("protocol", "repository_worktree_sha256")
+        left_value = comparable_value(left, path)
+        right_value = comparable_value(right, path)
+        if (
+            left_value is MISSING
+            or right_value is MISSING
+            or left_value != right_value
+        ):
+            mismatches.append(".".join(path))
+    path = ("protocol", "repository_source_sha256")
+    left_value = comparable_value(left, path)
+    right_value = comparable_value(right, path)
+    if not (left_value is MISSING and right_value is MISSING) and (
+        left_value is MISSING
+        or right_value is MISSING
+        or left_value != right_value
+    ):
+        mismatches.append(".".join(path))
+    return mismatches
 
 
 def summary(
@@ -55,6 +104,32 @@ def summary(
             for key in ("median", "minimum", "maximum")
         }
     except (KeyError, TypeError, ValueError):
+        if (
+            len(path) == 3
+            and path[0] == "decode"
+            and path[2] in ("time_to_last_output_seconds", "wall_seconds")
+        ):
+            try:
+                rows = nested(result, "decode", path[1], "runs")
+                if path[2] == "time_to_last_output_seconds":
+                    values = [
+                        float(
+                            row.get(
+                                "time_to_last_output_seconds",
+                                row["ttft_seconds"] + row["decode_seconds"],
+                            )
+                        )
+                        for row in rows
+                    ]
+                else:
+                    values = [float(row["wall_seconds"]) for row in rows]
+                return {
+                    "median": statistics.median(values),
+                    "minimum": min(values),
+                    "maximum": max(values),
+                }
+            except (KeyError, TypeError, ValueError):
+                pass
         return None
 
 
@@ -124,6 +199,9 @@ def render_card(
     left_hash: str,
     right_hash: str,
 ) -> str:
+    errors = validate_result(left) + validate_result(right)
+    if errors:
+        raise ValueError("invalid receipt: " + "; ".join(errors))
     left_label = str(left["run"]["label"])
     right_label = str(right["run"]["label"])
     left_gate = completion_count(left)
@@ -134,8 +212,9 @@ def render_card(
     level = max(levels) if levels else None
     lines = [
         card_rule("╔", "═", "╗"),
-        card_line("R I G M A R K  //  MATCHED A/B  //  REAL OUTPUT. RECEIPTS INCLUDED."),
+        card_line("R I G M A R K  //  MATCHED REQUEST A/B  //  REAL OUTPUT. RECEIPTS INCLUDED."),
         card_line("SAME PROTOCOL • PROMPTS • REQUEST BODY • GENERATION LIMITS"),
+        card_line("TOK/S RATIOS REQUIRE MATCHING SERVER-SIDE TOKEN DEFINITIONS"),
         card_rule("╠", "═", "╣"),
         card_line(f"LEFT   {left_label}"),
         card_line(f"RIGHT  {right_label}"),
@@ -143,18 +222,47 @@ def render_card(
         card_line(f"       right {benchmark_identity(right)}"),
         card_rule("╠", "═", "╣"),
         card_line(f"{'METRIC':<24} {'LEFT':>14}  {'RIGHT':>18}  {'RIGHT/LEFT':>12}"),
-        card_line(card_metric("CODE DECODE", left, right, ("decode", "code", "decode_tokens_per_second"))),
-        card_line(card_metric("PROSE DECODE", left, right, ("decode", "prose", "decode_tokens_per_second"))),
-        card_line(card_metric("STRUCTURED CEILING", left, right, ("decode", "structured", "decode_tokens_per_second"))),
+        card_line(card_metric(
+            "CODE DECODE EST.", left, right,
+            ("decode", "code", "decode_tokens_per_second"),
+        )),
+        card_line(card_metric(
+            "CODE LAST OUTPUT, SEC ↓", left, right,
+            ("decode", "code", "time_to_last_output_seconds"),
+        )),
+        card_line(card_metric(
+            "PROSE DECODE EST.", left, right,
+            ("decode", "prose", "decode_tokens_per_second"),
+        )),
+        card_line(card_metric(
+            "PROSE LAST OUTPUT, SEC ↓", left, right,
+            ("decode", "prose", "time_to_last_output_seconds"),
+        )),
+        card_line(card_metric(
+            "STRUCTURED CEILING", left, right,
+            ("decode", "structured", "decode_tokens_per_second"),
+        )),
     ]
     if depth is not None:
+        label = depth_label(depth)
         lines.extend((
-            card_line(card_metric(f"{depth // 1024}K COLD PREFILL", left, right, ("prefill", str(depth), "cold", "effective_prefill_tokens_per_second"))),
-            card_line(card_metric(f"{depth // 1024}K WARM REPLAY", left, right, ("prefill", str(depth), "warm_replay", "effective_prefill_tokens_per_second"))),
+            card_line(card_metric(
+                f"{label} COLD PREFILL", left, right,
+                ("prefill", str(depth), "cold",
+                 "effective_prefill_tokens_per_second"),
+            )),
+            card_line(card_metric(
+                f"{label} IMMEDIATE REPLAY", left, right,
+                ("prefill", str(depth), "warm_replay",
+                 "effective_prefill_tokens_per_second"),
+            )),
         ))
     if level is not None:
+        workload = str(
+            left.get("settings", {}).get("concurrency_workload", "unknown")
+        ).upper()
         lines.append(card_line(card_metric(
-            f"C{level} SHORT CODE LOAD",
+            f"C{level} CAPPED {workload} LOAD",
             left,
             right,
             ("concurrency", str(level), "aggregate_end_to_end_tokens_per_second"),
@@ -162,7 +270,7 @@ def render_card(
     lines.extend((
         card_rule("╠", "═", "╣"),
         card_line(
-            f"OUTPUT GATES  left {left_gate[0]}/{left_gate[1]}  •  "
+            f"BASIC GATES  left {left_gate[0]}/{left_gate[1]}  •  "
             f"right {right_gate[0]}/{right_gate[1]}"
         ),
         card_line(f"RECEIPTS  {left_hash[:16]}…  •  {right_hash[:16]}…"),
@@ -183,6 +291,12 @@ def main() -> None:
 
     left = json.loads(args.left.read_text())
     right = json.loads(args.right.read_text())
+    receipt_errors = [
+        *(f"left: {error}" for error in validate_result(left)),
+        *(f"right: {error}" for error in validate_result(right)),
+    ]
+    if receipt_errors:
+        parser.error("invalid receipt: " + "; ".join(receipt_errors))
     mismatches = comparable(left, right)
     if mismatches and not args.allow_mismatch:
         parser.error(
@@ -214,6 +328,10 @@ def main() -> None:
             (
                 f"{workload.title()} TTFT, seconds ↓",
                 ("decode", workload, "ttft_seconds"),
+            ),
+            (
+                f"{workload.title()} last output, seconds ↓",
+                ("decode", workload, "time_to_last_output_seconds"),
             ),
         ))
     for depth in left.get("settings", {}).get("prefill_depths", []):
@@ -260,7 +378,7 @@ def main() -> None:
             f"{format_summary(rhs, precision)} | {ratio_text} |"
         )
 
-    print("\n| Completion gate | " + left_label + " | " + right_label + " |")
+    print("\n| Basic output gate | " + left_label + " | " + right_label + " |")
     print("|---|---:|---:|")
     for workload in ("code", "prose", "structured"):
         left_gate = nested(left, "decode", workload, "completion_gate")
@@ -272,7 +390,10 @@ def main() -> None:
         )
 
     if left["run"].get("model") != right["run"].get("model"):
-        print("\nWarning: model IDs differ; this is an appliance comparison, not a topology-only comparison.")
+        print(
+            "\nWarning: model IDs differ; this is an appliance comparison, "
+            "not a topology-only comparison."
+        )
     if mismatches:
         print("\nWarning: comparison forced despite mismatches: " + ", ".join(mismatches))
     print("\nBenchmark identity:")

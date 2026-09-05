@@ -3,6 +3,9 @@
 Run `python3 configure.py` and answer the prompts. The generated
 `metadata.json` is ignored by Git so local addresses or notes cannot be added
 accidentally. The safe, relevant fields are embedded in each result.
+These fields are operator-declared. RigMark records and fingerprints them but
+cannot independently attest which hardware, weights, or competing traffic were
+actually present.
 
 | Field | What to enter |
 |---|---|

@@ -1,25 +1,26 @@
 ╭──────────────────────────────────────────────────────────────────────────────────────────╮
 │  R I G M A R K   //   AGENT WORKLOAD RECEIPT                                             │
-│  BENCHMARKS LOCAL AI THE WAY CODING AGENTS ACTUALLY USE IT                               │
-│  ●  15/15 OUTPUTS COMPLETE                                                               │
+│  BENCHMARKS LOCAL AI HOW CODING AGENTS ACTUALLY USE IT                                   │
+│  ●  15/15 BASIC OUTPUT GATES PASSED                                                      │
 ├─ SYSTEM ─────────────────────────────────────────────────────────────────────────────────┤
 │  MODEL      Qwen3.8-27B-FP8-vllm                                                         │
 │  APPLIANCE  1x NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB                  │
 │  RUN        reasoning=low  •  protocol=1.0.0                                             │
 │  SOURCE     git:046e92cbe941  •  clean                                                   │
 ├─ REAL OUTPUT ────────────────────────────────────────────────────────────────────────────┤
-│  WORKLOAD                 MEDIAN          OBSERVED RANGE          COMPLETE               │
-│  CODE                 129.5 tok/s      124.0–130.4           ✓ 5/5                       │
-│  PROSE                 84.2 tok/s       81.9–100.1           ✓ 5/5                       │
-│  STRUCTURED*          136.0 tok/s      135.0–136.1           ✓ 5/5                       │
+│  WORKLOAD       DECODE EST.      LAST OUTPUT          RANGE          BASIC GATE          │
+│  CODE             129.5 tok/s      25.2s last    124.0–130.4    ✓ 5/5                    │
+│  PROSE             84.2 tok/s      19.9s last     81.9–100.1    ✓ 5/5                    │
+│  STRUCTURED*      136.0 tok/s       7.9s last    135.0–136.1    ✓ 5/5                    │
 │  * predictable-output ceiling; not a proxy for agent speed                               │
 ├─ CONTEXT ────────────────────────────────────────────────────────────────────────────────┤
-│  64K PREFILL   cold 5,808 tok/s  •  cached replay 85,248 tok/s                           │
-├─ MULTI-AGENT LOAD ───────────────────────────────────────────────────────────────────────┤
+│  64K PREFILL   cold 5,808 tok/s  •  immediate replay 85,248 tok/s                        │
+├─ CAPPED CONCURRENT GENERATION ───────────────────────────────────────────────────────────┤
 │  SHORT CODE • END-TO-END • 256-TOKEN CAP PER AGENT                                       │
 │  AGGREGATE   C1 108.7  •  C2 206.0  •  C4 385.4 tok/s                                    │
-├─ PROOF ──────────────────────────────────────────────────────────────────────────────────┤
-│  RECEIPT    sha256:604ea2c48107a69f…                                                     │
+│  C4 OUTPUT STATE   normal stop 0/12  •  visible 2/12  •  reasoning may be included       │
+├─ RECEIPT ────────────────────────────────────────────────────────────────────────────────┤
+│  JSON       sha256:604ea2c48107a69f…                                                     │
 │  SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK                                       │
 │  github.com/alexellis/rigmark                                                            │
 ╰──────────────────────────────────────────────────────────────────────────────────────────╯

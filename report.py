@@ -7,12 +7,21 @@ import argparse
 import hashlib
 import json
 import os
+import statistics
 import sys
 from pathlib import Path
 from typing import Any
 
+from receipt import validate_result
+
 
 WIDTH = 92
+
+
+def depth_label(depth: int) -> str:
+    if depth >= 1_024 and depth % 1_024 == 0:
+        return f"{depth // 1_024}K"
+    return f"{depth:,} TOKENS"
 
 
 def clipped(value: object, width: int) -> str:
@@ -39,10 +48,18 @@ def metric(result: dict[str, Any], workload: str) -> str:
     gate = data["completion_gate"]
     mark = "✓" if gate["passed"] == gate["total"] else "✗"
     label = "STRUCTURED*" if workload == "structured" else workload.upper()
+    last_output = data.get("time_to_last_output_seconds")
+    if not isinstance(last_output, dict):
+        values = [
+            float(row["ttft_seconds"]) + float(row["decode_seconds"])
+            for row in data["runs"]
+        ]
+        last_output = {"median": statistics.median(values)}
     return (
-        f"{label:<18} {speed['median']:>7.1f} tok/s"
-        f"     {speed['minimum']:>6.1f}–{speed['maximum']:<6.1f}"
-        f"          {mark} {gate['passed']}/{gate['total']}"
+        f"{label:<14} {speed['median']:>7.1f} tok/s"
+        f"   {last_output['median']:>7.1f}s last"
+        f"   {speed['minimum']:>6.1f}–{speed['maximum']:<6.1f}"
+        f"   {mark} {gate['passed']}/{gate['total']}"
     )
 
 
@@ -59,6 +76,9 @@ def benchmark_identity(result: dict[str, Any]) -> str:
 
 
 def render(result: dict[str, Any], fingerprint: str) -> str:
+    errors = validate_result(result)
+    if errors:
+        raise ValueError("invalid receipt: " + "; ".join(errors))
     run = result["run"]
     settings = result["settings"]
     appliance = run["appliance"]
@@ -77,11 +97,11 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
     lines = [
         rule("╭", "─", "╮"),
         line("R I G M A R K   //   AGENT WORKLOAD RECEIPT"),
-        line("BENCHMARKS LOCAL AI THE WAY CODING AGENTS ACTUALLY USE IT"),
+        line("BENCHMARKS LOCAL AI HOW CODING AGENTS ACTUALLY USE IT"),
         line(
-            f"●  {passed}/{total} OUTPUTS COMPLETE"
+            f"●  {passed}/{total} BASIC OUTPUT GATES PASSED"
             if complete else
-            f"▲  {passed}/{total} OUTPUTS COMPLETE — DO NOT HEADLINE"
+            f"▲  {passed}/{total} BASIC OUTPUT GATES PASSED — DO NOT HEADLINE"
         ),
         section("SYSTEM"),
         line(f"MODEL      {run['model']}"),
@@ -89,7 +109,7 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
         line(f"RUN        reasoning={effort}  •  protocol={result['protocol']['version']}"),
         line(benchmark_identity(result)),
         section("REAL OUTPUT"),
-        line("WORKLOAD                 MEDIAN          OBSERVED RANGE          COMPLETE"),
+        line("WORKLOAD       DECODE EST.      LAST OUTPUT          RANGE          BASIC GATE"),
         line(metric(result, "code")),
         line(metric(result, "prose")),
         line(metric(result, "structured")),
@@ -103,7 +123,10 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
         warm = data["warm_replay"]["effective_prefill_tokens_per_second"]["median"]
         lines.extend((
             section("CONTEXT"),
-            line(f"{depth // 1024}K PREFILL   cold {cold:,.0f} tok/s  •  cached replay {warm:,.0f} tok/s"),
+            line(
+                f"{depth_label(depth)} PREFILL   cold {cold:,.0f} tok/s"
+                f"  •  immediate replay {warm:,.0f} tok/s"
+            ),
         ))
     levels = settings.get("concurrency", [])
     if levels:
@@ -113,17 +136,30 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
                 "aggregate_end_to_end_tokens_per_second"
             ]["median"]
             values.append(f"C{level_value} {median:.1f}")
+        largest = result["concurrency"][str(max(levels))]
+        streams = [
+            stream
+            for current_round in largest["rounds"]
+            for stream in current_round["streams"]
+        ]
+        normal = sum(stream.get("finish_reason") == "stop" for stream in streams)
+        visible = sum(bool(stream.get("output", "").strip()) for stream in streams)
+        workload = str(settings.get("concurrency_workload", "unknown")).upper()
         lines.extend((
-            section("MULTI-AGENT LOAD"),
+            section("CAPPED CONCURRENT GENERATION"),
             line(
-                "SHORT CODE • END-TO-END • "
+                f"SHORT {workload} • END-TO-END • "
                 f"{settings['concurrency_tokens']}-TOKEN CAP PER AGENT"
             ),
             line("AGGREGATE   " + "  •  ".join(values) + " tok/s"),
+            line(
+                f"C{max(levels)} OUTPUT STATE   normal stop {normal}/{len(streams)}"
+                f"  •  visible {visible}/{len(streams)}  •  reasoning may be included"
+            ),
         ))
     lines.extend((
-        section("PROOF"),
-        line(f"RECEIPT    sha256:{fingerprint[:16]}…"),
+        section("RECEIPT"),
+        line(f"JSON       sha256:{fingerprint[:16]}…"),
         line("SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK"),
         line("github.com/alexellis/rigmark"),
         rule("╰", "─", "╯"),

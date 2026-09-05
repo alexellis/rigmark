@@ -23,8 +23,18 @@ from pathlib import Path
 from typing import Any
 
 
-PROTOCOL_VERSION = "1.0.0"
+PROTOCOL_VERSION = "1.1.0"
 HERE = Path(__file__).resolve().parent
+SOURCE_FILES = (
+    "audit_code.py",
+    "bench.py",
+    "compare.py",
+    "configure.py",
+    "prompts.json",
+    "receipt.py",
+    "report.py",
+    "rigmark",
+)
 
 
 def normalise_base_url(value: str) -> str:
@@ -64,6 +74,25 @@ def percentile(values: list[float], fraction: float) -> float:
     return ordered[index]
 
 
+def chunk_timed_decode_rate(
+    completion_tokens: int,
+    first_output: float,
+    last_output: float,
+    measured_events: int,
+) -> tuple[float, float]:
+    if completion_tokens > 1 and measured_events < 2:
+        raise RuntimeError(
+            "server buffered the completion into one measurable SSE event; "
+            "decode rate is unavailable"
+        )
+    window = last_output - first_output
+    if completion_tokens > 1 and window <= 0:
+        raise RuntimeError("decode timing window is not measurable")
+    window = max(window, 0.0)
+    rate = 0.0 if completion_tokens <= 1 else (completion_tokens - 1) / window
+    return window, rate
+
+
 class Client:
     def __init__(self, base_url: str, api_key: str, timeout: float):
         self.base_url = validate_base_url(base_url)
@@ -94,12 +123,14 @@ class Client:
         )
         started = time.monotonic()
         first = None
+        first_visible = None
         last = None
         usage: dict[str, Any] = {}
         finish_reason = None
         measured_chunks: list[str] = []
         output_chunks: list[str] = []
         reasoning_chunks: list[str] = []
+        stream_done_marker = False
 
         with urllib.request.urlopen(request, timeout=self.timeout) as response:
             for raw in response:
@@ -108,6 +139,7 @@ class Client:
                     continue
                 encoded = line[5:].strip()
                 if encoded == "[DONE]":
+                    stream_done_marker = True
                     break
                 event = json.loads(encoded)
                 if isinstance(event.get("usage"), dict):
@@ -115,6 +147,14 @@ class Client:
                 choices = event.get("choices") or []
                 if not choices:
                     continue
+                if (
+                    len(choices) != 1
+                    or not isinstance(choices[0], dict)
+                    or choices[0].get("index", 0) != 0
+                ):
+                    raise RuntimeError(
+                        "stream returned multiple or non-zero-index choices"
+                    )
                 choice = choices[0]
                 if choice.get("finish_reason") is not None:
                     finish_reason = choice["finish_reason"]
@@ -133,6 +173,8 @@ class Client:
                 if measured:
                     now = time.monotonic()
                     first = first or now
+                    if content:
+                        first_visible = first_visible or now
                     last = now
                     measured_chunks.append(measured)
                     reasoning_chunks.append(reasoning)
@@ -144,9 +186,21 @@ class Client:
         if "completion_tokens" not in usage or "prompt_tokens" not in usage:
             raise RuntimeError("server did not return final token usage")
 
-        completion = int(usage["completion_tokens"])
-        prompt = int(usage["prompt_tokens"])
-        decode_window = max(last - first, 1e-9)
+        for field in ("completion_tokens", "prompt_tokens"):
+            if (
+                not isinstance(usage[field], int)
+                or isinstance(usage[field], bool)
+                or usage[field] < 0
+            ):
+                raise RuntimeError(
+                    f"server returned a non-integer {field}: {usage[field]!r}"
+                )
+        completion = usage["completion_tokens"]
+        prompt = usage["prompt_tokens"]
+        measured_events = len(measured_chunks)
+        decode_window, decode_rate = chunk_timed_decode_rate(
+            completion, first, last, measured_events
+        )
         rendered = "".join(measured_chunks)
         output = "".join(output_chunks)
         reasoning = "".join(reasoning_chunks)
@@ -154,9 +208,16 @@ class Client:
             "prompt_tokens": prompt,
             "completion_tokens": completion,
             "ttft_seconds": round(first - started, 6),
+            "time_to_first_visible_seconds": (
+                None if first_visible is None else round(first_visible - started, 6)
+            ),
+            "time_to_last_output_seconds": round(last - started, 6),
             "decode_seconds": round(decode_window, 6),
-            "decode_tokens_per_second": round(max(completion - 1, 0) / decode_window, 3),
+            "decode_tokens_per_second": round(decode_rate, 3),
+            "measured_sse_events": measured_events,
             "wall_seconds": round(finished - started, 6),
+            "response_tail_seconds": round(max(finished - last, 0), 6),
+            "stream_done_marker": stream_done_marker,
             "finish_reason": finish_reason,
             "output": output,
             "output_characters": len(output),
@@ -170,6 +231,14 @@ class Client:
 def load_prompts(path: Path) -> tuple[dict[str, Any], str]:
     raw = path.read_bytes()
     return json.loads(raw), hashlib.sha256(raw).hexdigest()
+
+
+def source_fingerprint() -> str:
+    digest = hashlib.sha256()
+    for name in SOURCE_FILES:
+        path = HERE / name
+        digest.update(name.encode() + b"\0" + path.read_bytes() + b"\0")
+    return digest.hexdigest()
 
 
 def archival_identity(path: Path = HERE / ".git_archival.txt") -> dict[str, Any] | None:
@@ -187,13 +256,24 @@ def archival_identity(path: Path = HERE / ".git_archival.txt") -> dict[str, Any]
         return None
     return {
         "repository_revision": revision.lower(),
-        "repository_dirty": False,
+        "repository_dirty": None,
         "repository_source": "git-archive",
+        "repository_source_sha256": source_fingerprint(),
     }
 
 
 def git_identity() -> dict[str, Any]:
     try:
+        root = Path(
+            subprocess.check_output(
+                ["git", "rev-parse", "--show-toplevel"],
+                cwd=HERE,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        ).resolve()
+        if root != HERE:
+            raise RuntimeError("benchmark is inside an unrelated Git worktree")
         revision = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=HERE, text=True,
             stderr=subprocess.DEVNULL,
@@ -207,6 +287,7 @@ def git_identity() -> dict[str, Any]:
             "repository_revision": revision,
             "repository_dirty": bool(status),
             "repository_source": "git-worktree",
+            "repository_source_sha256": source_fingerprint(),
         }
         if status:
             diff = subprocess.check_output(
@@ -229,7 +310,7 @@ def git_identity() -> dict[str, Any]:
                     worktree.update(path.read_bytes())
             identity["repository_worktree_sha256"] = worktree.hexdigest()
         return identity
-    except (OSError, subprocess.CalledProcessError):
+    except (OSError, RuntimeError, subprocess.CalledProcessError):
         return archival_identity() or {
             "repository_revision": "unknown",
             "repository_dirty": None,
@@ -257,7 +338,10 @@ def build_chat_payload(
 ) -> dict[str, Any]:
     protected = {
         "model", "messages", "temperature", "top_p", "seed", "max_tokens",
-        "stream", "stream_options",
+        "stream", "stream_options", "n", "best_of", "stop",
+        "max_completion_tokens", "min_tokens", "ignore_eos",
+        "response_format", "guided_json", "guided_regex", "guided_choice",
+        "use_beam_search",
     }
     conflicts = sorted(protected.intersection(extra_body))
     if conflicts:
@@ -310,9 +394,7 @@ def run_decode(
             row = client.stream("/v1/chat/completions", payload)
             row["run"] = index + 1
             if name == "structured":
-                row["completion_validation"] = validate_structured_output(
-                    row["output"]
-                )
+                row["completion_validation"] = validate_structured_row(row)
             else:
                 row["completion_validation"] = validate_visible_output(row)
             rows.append(row)
@@ -326,6 +408,10 @@ def run_decode(
             "runs": rows,
             "decode_tokens_per_second": summarise(rows, "decode_tokens_per_second"),
             "ttft_seconds": summarise(rows, "ttft_seconds"),
+            "time_to_last_output_seconds": summarise(
+                rows, "time_to_last_output_seconds"
+            ),
+            "wall_seconds": summarise(rows, "wall_seconds"),
             "completion_gate": {
                 "passed": sum(
                     1 for row in rows if row["completion_validation"]["valid"]
@@ -344,16 +430,38 @@ def validate_structured_output(output: str) -> dict[str, Any]:
     if not isinstance(value, list) or len(value) != 50:
         return {"valid": False, "error": "expected an array of 50 objects"}
     for index, item in enumerate(value, start=1):
-        if item != {"index": index, "square": index * index}:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"index", "square"}
+            or type(item["index"]) is not int
+            or type(item["square"]) is not int
+            or item["index"] != index
+            or item["square"] != index * index
+        ):
             return {"valid": False, "error": f"incorrect object at index {index}"}
     return {"valid": True}
+
+
+def normal_stream_end(row: dict[str, Any]) -> dict[str, Any] | None:
+    reason = row.get("finish_reason")
+    if reason != "stop":
+        return {"valid": False, "error": f"non-normal finish reason: {reason!r}"}
+    if "stream_done_marker" in row and row["stream_done_marker"] is not True:
+        return {"valid": False, "error": "stream ended without a [DONE] marker"}
+    return None
+
+
+def validate_structured_row(row: dict[str, Any]) -> dict[str, Any]:
+    failure = normal_stream_end(row)
+    return failure or validate_structured_output(row.get("output", ""))
 
 
 def validate_visible_output(row: dict[str, Any]) -> dict[str, Any]:
     if not row.get("output", "").strip():
         return {"valid": False, "error": "no visible answer"}
-    if row.get("finish_reason") == "length":
-        return {"valid": False, "error": "answer hit the token limit"}
+    failure = normal_stream_end(row)
+    if failure:
+        return failure
     return {"valid": True}
 
 
@@ -376,10 +484,16 @@ def exact_token_ids(
         "/tokenize",
         {"model": model, "prompt": unit, "add_special_tokens": False},
     )
-    prefix_tokens = [int(token) for token in (prefix_body.get("tokens") or [])]
-    unit_tokens = [int(token) for token in (unit_body.get("tokens") or [])]
+    prefix_tokens = prefix_body.get("tokens") or []
+    unit_tokens = unit_body.get("tokens") or []
+    if not all(type(token) is int for token in [*prefix_tokens, *unit_tokens]):
+        raise RuntimeError("tokenizer returned a non-integer token ID")
     if not prefix_tokens or not unit_tokens:
         raise RuntimeError("tokenizer returned an empty prefix or prefill unit")
+    if len(prefix_tokens) > target:
+        raise RuntimeError(
+            f"prefill depth {target} is too small for the cache-busting prefix"
+        )
     tokens = prefix_tokens[:target]
     while len(tokens) < target:
         tokens.extend(unit_tokens[:target - len(tokens)])
@@ -400,8 +514,16 @@ def prefill_once(client: Client, model: str, tokens: list[int]) -> dict[str, Any
         },
     }
     row = client.stream("/v1/completions", payload)
+    requested = len(tokens)
+    reported = row["prompt_tokens"]
+    if reported != requested:
+        raise RuntimeError(
+            "prefill token-count mismatch: requested "
+            f"{requested}, server reported {reported}; refusing to label this sample"
+        )
+    row["requested_prompt_tokens"] = requested
     row["effective_prefill_tokens_per_second"] = round(
-        row["prompt_tokens"] / max(row["ttft_seconds"], 1e-9), 3
+        requested / max(row["ttft_seconds"], 1e-9), 3
     )
     return row
 
@@ -518,7 +640,9 @@ def run_concurrency(
             all_streams.extend(streams)
             print(
                 f"  {round_index + 1}: aggregate {aggregate:.1f} tok/s, "
-                f"median stream {statistics.median(row['decode_tokens_per_second'] for row in streams):.1f} tok/s",
+                "median stream "
+                f"{statistics.median(row['decode_tokens_per_second'] for row in streams):.1f} "
+                "tok/s",
                 flush=True,
             )
         output[str(level)] = {
@@ -539,6 +663,15 @@ def comma_ints(value: str) -> list[int]:
     if not result or any(item < 1 for item in result):
         raise argparse.ArgumentTypeError("expected positive comma-separated integers")
     return result
+
+
+def validate_prefill_depths(depths: list[int], context_limit: int) -> None:
+    for depth in depths:
+        if depth + 8 > context_limit:
+            raise ValueError(
+                f"prefill depth {depth} plus 8 generated tokens exceeds "
+                f"the declared context limit {context_limit}"
+            )
 
 
 def write_result(result: dict[str, Any], output: Path) -> None:
@@ -591,7 +724,11 @@ def main() -> None:
     parser.add_argument("--api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--decode-tokens", type=int, default=4096)
-    parser.add_argument("--prefill-depths", type=comma_ints, default=comma_ints("8192,32768,65536"))
+    parser.add_argument(
+        "--prefill-depths",
+        type=comma_ints,
+        default=comma_ints("8192,32768,65536"),
+    )
     parser.add_argument("--prefill-runs", type=int, default=3)
     parser.add_argument("--concurrency", type=comma_ints, default=comma_ints("1,2,4"))
     parser.add_argument("--concurrency-runs", type=int, default=3)
@@ -612,6 +749,8 @@ def main() -> None:
         filename_label = safe_label(args.label)
         metadata = load_metadata(args.metadata)
         extra_body = json.loads(args.extra_body)
+        if not args.skip_prefill:
+            validate_prefill_depths(args.prefill_depths, metadata["context_limit"])
     except (json.JSONDecodeError, OSError, ValueError) as error:
         parser.error(str(error))
     if not isinstance(extra_body, dict):

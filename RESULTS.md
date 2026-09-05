@@ -3,8 +3,9 @@
 These are appliance speed measurements, not model-quality rankings. All three
 results within each table use the same clean RigMark revision, comparison ID,
 prompts, low-effort request body, 4,096-token completion limit, and run counts.
-Every code, prose, and structured output passed its completion gate: **15/15
-per appliance**.
+Every code, prose, and structured response passed its basic output gate:
+**15/15 per appliance**. That means visible output and a normal finish, not
+semantic correctness.
 
 ## Matched GLM TP2 → TP4 sweep
 
@@ -14,8 +15,10 @@ receipts without `--allow-mismatch`.
 
 | Measurement | GLM-5.3 TP2 | GLM-5.3 TP4 | TP4 / TP2 |
 |---|---:|---:|---:|
-| Completed code decode | 42.6 | **75.2** | **1.77×** |
-| Completed prose decode | 22.2 | **29.8** | **1.34×** |
+| Code decode estimate | 42.6 | **75.2** | **1.77×** |
+| Code time to last output, seconds ↓ | 50.1 | **28.1** | **0.56×** |
+| Prose decode estimate | 22.2 | **29.8** | **1.34×** |
+| Prose time to last output, seconds ↓ | 45.4 | **36.7** | **0.81×** |
 | Valid structured ceiling | 54.6 | **109.6** | **2.01×** |
 | Cold 64K prefill | 1,905 | **2,276** | **1.19×** |
 | Warm 64K replay | 11,464 | **40,859** | **3.56×** |
@@ -37,8 +40,10 @@ appliance comparison—not a topology-only claim.
 
 | Measurement | GLM-5.3 TP2 | DeepSeek V4 Flash TP2 | Qwen3.8 27B TP1 |
 |---|---:|---:|---:|
-| Completed code decode | **44.0** | **72.9** | **129.5** |
-| Completed prose decode | **18.9** | **48.1** | **84.2** |
+| Code decode estimate | **44.0** | **72.9** | **129.5** |
+| Code time to last output, seconds ↓ | **46.4** | **35.8** | **25.2** |
+| Prose decode estimate | **18.9** | **48.1** | **84.2** |
+| Prose time to last output, seconds ↓ | **55.7** | **68.3** | **19.9** |
 | Valid structured ceiling | **64.9** | **85.2** | **136.0** |
 | Cold 64K prefill | **1,922** | **1,628** | **5,808** |
 | Warm 64K replay | **11,363** | **172,715** | **85,248** |
@@ -51,6 +56,37 @@ whole request and uses a 256-token cap. Structured output is deliberately
 labelled as a speculative-decoding ceiling, not an everyday agent speed. The
 model families and hardware differ, so this is an appliance comparison—not a
 topology-only claim.
+
+Time to last output matters alongside decode rate. DeepSeek, for example,
+decoded prose much faster than GLM but took longer to finish because it emitted
+far more reasoning and output. Tokens/second alone does not describe that user
+experience, and token definitions may differ between model families.
+
+## Code self-test audit
+
+The basic output gate does not claim that generated code is correct. As an
+additional audit, the implementation and test blocks from each retained code
+answer were replayed with `go test` in a networkless, read-only, resource-limited
+container. All 15 answers compiled; **11/15 model-supplied test suites passed**.
+
+| Appliance | Compiled | Model-supplied tests passed |
+|---|---:|---:|
+| GLM-5.3 TP2 | 5/5 | 4/5 |
+| DeepSeek V4 Flash TP2 | 5/5 | 3/5 |
+| Qwen3.8 27B TP1 | 5/5 | 4/5 |
+
+The failures were GLM run 5, DeepSeek runs 4 and 5, and Qwen run 4. This does
+not change their measured serving speed; it is a separate self-consistency
+signal. Reproduce it from the unedited JSON receipts with:
+
+```bash
+docker pull golang@sha256:699337d620559a59b4a2bb298ad59611e535d2ee755a34cf2d2a98f37578dc80
+./rigmark audit-code \
+  results/reference/glm53-libert-nvfp4-tp2-low.json \
+  results/reference/ds4f-0731-nvfp4-tp2-low.json \
+  results/reference/qwen38-27b-fp8-rtxpro6000-low.json \
+  --image golang@sha256:699337d620559a59b4a2bb298ad59611e535d2ee755a34cf2d2a98f37578dc80
+```
 
 ### GLM-5.3-Flash, Libert NVFP4, TP2
 
@@ -75,8 +111,7 @@ answer finish and retains it for inspection.
 ### DeepSeek-V4-Flash-0731, NVFP4, TP2
 
 Two DGX Sparks connected directly over 200 Gb/s RoCE, native NVFP4 MLA KV,
-DFlash2 probabilistic drafting at five tokens, and a one-million-token served
-context.
+DSpark MTP drafting at five tokens, and a one-million-token served context.
 
 | Workload | Median | Five-run range |
 |---|---:|---:|
