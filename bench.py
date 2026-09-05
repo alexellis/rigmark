@@ -671,8 +671,10 @@ def main() -> None:
     result["run"]["finished_at"] = datetime.now(timezone.utc).isoformat()
     write_result(result, output)
     try:
-        from report import print_report
+        from report import print_report, save_report
 
+        card = save_report(result, output)
+        print(f"card: {card}")
         print()
         print_report(result, output)
     except (KeyError, OSError, TypeError, ValueError) as error:

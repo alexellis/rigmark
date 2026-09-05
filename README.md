@@ -54,10 +54,11 @@ requested value. Throughput from a failed gate remains diagnostic but must not
 be cited as a successful workload result.
 
 At the end, the runner prints a terminal result card designed to be
-screenshotted. Reprint it at any time with:
+screenshotted and saves a stable `RESULT.card.txt` beside the JSON. Reprint or
+regenerate it at any time with:
 
 ```bash
-./rigmark report results/YOUR-RESULT.json
+./rigmark report --save results/YOUR-RESULT.json
 ```
 
 Share the card with the complete JSON—the card is the headline, and the JSON

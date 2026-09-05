@@ -2,6 +2,7 @@ import hashlib
 import json
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import report
 
@@ -27,6 +28,14 @@ class ReportTest(unittest.TestCase):
         card = report.render(result, "0" * 64)
         self.assertIn("OUTPUT  //  14/15 COMPLETE — DO NOT HEADLINE", card)
         self.assertIn("FAIL 4/5", card)
+
+    def test_save_report_writes_card_beside_receipt(self):
+        with TemporaryDirectory() as directory:
+            result_path = Path(directory) / "run.json"
+            result_path.write_text(json.dumps(self.result))
+            card_path = report.save_report(self.result, result_path)
+            self.assertEqual(Path(directory) / "run.card.txt", card_path)
+            self.assertIn("R I G M A R K", card_path.read_text())
 
 
 if __name__ == "__main__":

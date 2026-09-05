@@ -131,12 +131,24 @@ def print_report(result: dict[str, Any], path: Path, colour: bool | None = None)
     print(colourise(card) if (enabled if colour is None else colour) else card)
 
 
+def save_report(result: dict[str, Any], result_path: Path) -> Path:
+    """Write the stable, plain-text card beside its JSON receipt."""
+    fingerprint = hashlib.sha256(result_path.read_bytes()).hexdigest()
+    output = result_path.with_suffix(".card.txt")
+    output.write_text(render(result, fingerprint) + "\n")
+    return output
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("result", type=Path)
     parser.add_argument("--no-colour", action="store_true")
+    parser.add_argument("--save", action="store_true", help="write RESULT.card.txt")
     args = parser.parse_args()
     result = json.loads(args.result.read_text())
+    if args.save:
+        output = save_report(result, args.result)
+        print(f"card: {output}", file=sys.stderr)
     print_report(result, args.result, colour=False if args.no_colour else None)
 
 
