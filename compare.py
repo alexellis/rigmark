@@ -4,9 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any
+
+
+CARD_WIDTH = 104
 
 
 def nested(value: dict[str, Any], *keys: str) -> Any:
@@ -64,11 +70,101 @@ def format_summary(
     )
 
 
+def card_line(value: object = "") -> str:
+    text = str(value)
+    if len(text) > CARD_WIDTH - 4:
+        text = text[: CARD_WIDTH - 5] + "…"
+    return "║ " + text.ljust(CARD_WIDTH - 4) + " ║"
+
+
+def card_rule(left: str, middle: str, right: str) -> str:
+    return left + middle * (CARD_WIDTH - 2) + right
+
+
+def completion_count(result: dict[str, Any]) -> tuple[int, int]:
+    gates = [
+        result["decode"][workload]["completion_gate"]
+        for workload in ("code", "prose", "structured")
+    ]
+    return sum(gate["passed"] for gate in gates), sum(gate["total"] for gate in gates)
+
+
+def card_metric(
+    label: str,
+    left: dict[str, Any],
+    right: dict[str, Any],
+    path: tuple[str, ...],
+) -> str:
+    lhs = summary(left, path)
+    rhs = summary(right, path)
+    if lhs is None or rhs is None:
+        return f"{label:<24} {'N/A':>18}  {'N/A':>18}  {'—':>12}"
+    ratio = rhs["median"] / lhs["median"] if lhs["median"] else 0
+    return (
+        f"{label:<24} {lhs['median']:>14,.1f}  "
+        f"{rhs['median']:>18,.1f}  {ratio:>11.2f}×"
+    )
+
+
+def render_card(
+    left: dict[str, Any],
+    right: dict[str, Any],
+    left_hash: str,
+    right_hash: str,
+) -> str:
+    left_label = str(left["run"]["label"])
+    right_label = str(right["run"]["label"])
+    left_gate = completion_count(left)
+    right_gate = completion_count(right)
+    depths = set(left.get("settings", {}).get("prefill_depths", []))
+    depth = max(depths) if depths else None
+    levels = set(left.get("settings", {}).get("concurrency", []))
+    level = max(levels) if levels else None
+    lines = [
+        card_rule("╔", "═", "╗"),
+        card_line("R I G M A R K  //  MATCHED A/B  //  REAL OUTPUT. RECEIPTS INCLUDED."),
+        card_line("SAME PROTOCOL • PROMPTS • REQUEST BODY • GENERATION LIMITS"),
+        card_rule("╠", "═", "╣"),
+        card_line(f"LEFT   {left_label}"),
+        card_line(f"RIGHT  {right_label}"),
+        card_rule("╠", "═", "╣"),
+        card_line(f"{'METRIC':<24} {'LEFT':>14}  {'RIGHT':>18}  {'RIGHT/LEFT':>12}"),
+        card_line(card_metric("CODE DECODE", left, right, ("decode", "code", "decode_tokens_per_second"))),
+        card_line(card_metric("PROSE DECODE", left, right, ("decode", "prose", "decode_tokens_per_second"))),
+        card_line(card_metric("STRUCTURED CEILING", left, right, ("decode", "structured", "decode_tokens_per_second"))),
+    ]
+    if depth is not None:
+        lines.extend((
+            card_line(card_metric(f"{depth // 1024}K COLD PREFILL", left, right, ("prefill", str(depth), "cold", "effective_prefill_tokens_per_second"))),
+            card_line(card_metric(f"{depth // 1024}K WARM REPLAY", left, right, ("prefill", str(depth), "warm_replay", "effective_prefill_tokens_per_second"))),
+        ))
+    if level is not None:
+        lines.append(card_line(card_metric(
+            f"C{level} SHORT CODE LOAD",
+            left,
+            right,
+            ("concurrency", str(level), "aggregate_end_to_end_tokens_per_second"),
+        )))
+    lines.extend((
+        card_rule("╠", "═", "╣"),
+        card_line(
+            f"OUTPUT GATES  left {left_gate[0]}/{left_gate[1]}  •  "
+            f"right {right_gate[0]}/{right_gate[1]}"
+        ),
+        card_line(f"RECEIPTS  {left_hash[:16]}…  •  {right_hash[:16]}…"),
+        card_line("SCREENSHOT → POST TO X • LINK BOTH JSON RECEIPTS • #RigMark"),
+        card_line("github.com/alexellis/rigmark"),
+        card_rule("╚", "═", "╝"),
+    ))
+    return "\n".join(lines)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("left", type=Path)
     parser.add_argument("right", type=Path)
     parser.add_argument("--allow-mismatch", action="store_true")
+    parser.add_argument("--card", action="store_true", help="print a shareable matched A/B card")
     args = parser.parse_args()
 
     left = json.loads(args.left.read_text())
@@ -78,6 +174,19 @@ def main() -> None:
         parser.error(
             "results use different protocols/settings: " + ", ".join(mismatches)
         )
+
+    if args.card:
+        if mismatches:
+            parser.error("a share card requires matched results; remove --allow-mismatch")
+        left_hash = hashlib.sha256(args.left.read_bytes()).hexdigest()
+        right_hash = hashlib.sha256(args.right.read_bytes()).hexdigest()
+        card = render_card(left, right, left_hash, right_hash)
+        if sys.stdout.isatty() and "NO_COLOR" not in os.environ:
+            from report import colourise
+
+            card = colourise(card)
+        print(card)
+        return
 
     left_label = left["run"]["label"]
     right_label = right["run"]["label"]

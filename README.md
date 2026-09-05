@@ -72,6 +72,12 @@ input, add `--skip-prefill`. To omit load testing, add `--skip-concurrency`.
 ./rigmark compare results/recipe-a.json results/recipe-b.json
 ```
 
+For a matched, screenshot-ready A/B card:
+
+```bash
+./rigmark compare --card results/recipe-a.json results/recipe-b.json
+```
+
 The comparison stops when the protocol, prompt corpus, thinking/request body,
 run counts, output lengths, prefill depths/runs, or concurrency settings differ.
 `--allow-mismatch` exists for exploratory comparisons and prints the mismatches.
