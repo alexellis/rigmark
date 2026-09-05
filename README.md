@@ -75,6 +75,12 @@ run counts, output lengths, prefill depths/runs, or concurrency settings differ.
 The exact measurement definitions and claim boundaries are in
 [`PROTOCOL.md`](PROTOCOL.md).
 
+## Published reference runs
+
+Reference results include their complete generated outputs and appliance
+metadata, not just headline numbers. See [`RESULTS.md`](RESULTS.md) for the
+current table and exact commands.
+
 ## Development
 
 ```bash
