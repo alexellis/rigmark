@@ -99,6 +99,19 @@ regenerate it at any time with:
 Share the card with the complete JSON—the card is the headline, and the JSON
 is the receipt.
 
+## Challenge a recipe
+
+Run the standard suite unchanged against a quiet endpoint and publish its card
+and JSON receipt. That is the whole challenge: completed code and prose,
+structured output labelled as a ceiling, cold and warm prefill, and concurrent
+service load under one disclosed protocol. A recipe may optimise anything on
+the server side; RigMark keeps the client-side work and claim boundaries fixed.
+
+There is deliberately no universal `thinking=off` profile. Some templates
+implement that switch, some ignore it, and others expose different controls.
+Publish such a run as a separately labelled, model-specific ceiling and compare
+it only with receipts carrying the identical request body.
+
 For an engine without vLLM's `/tokenize` extension or token-ID completion
 input, add `--skip-prefill`. To omit load testing, add `--skip-concurrency`.
 

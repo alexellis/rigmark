@@ -29,6 +29,11 @@ Model-specific fields such as thinking mode are supplied through
 `--extra-body`, recorded verbatim, and must match. They cannot override the
 fixed benchmark fields.
 
+No universal "thinking off" profile is defined because model templates do not
+implement that control consistently. A no-thinking run is a model-specific
+ceiling and must use a separate comparison ID and label. It is comparable only
+with a receipt carrying the identical extra request body.
+
 Decode rate is `(completion_tokens - 1) / (last_token_time - first_token_time)`.
 It deliberately excludes prefill. Server-reported token usage is mandatory.
 The report publishes the median, minimum, maximum, and p90 of every workload;
