@@ -1,0 +1,25 @@
+{
+  "record_type": "first-party serving input snapshot",
+  "operator": "Alex Ellis",
+  "captured_at": "2026-09-09",
+  "hardware": "2x NVIDIA DGX Spark (GB10)",
+  "topology": "TP2, switchless direct-link RoCE",
+  "negotiated_link_speed": "200 Gb/s",
+  "recipe": "alexellis/deepseek-v4-flash-0731-2x-dgx-spark",
+  "recipe_revision": "e6d1ef030750a226636cb6ba5e95dcd512483c6a",
+  "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+  "model_revision": "9e165c30e2704aec5d9d593cce3eebd58bbef1cb",
+  "quantisation": "NVFP4 recipe checkpoint",
+  "kv_cache_dtype": "NVFP4 DS MLA",
+  "serving_engine": "vLLM 0.25.2.dev0+g752a3a504.d20260714",
+  "serving_image": "ghcr.io/anemll/dspark-vllm-gx10@sha256:a83948492cf13df455170fb42885f5ef4db54fefe0feff0f841ecbff464ac9d8",
+  "drafter": "DSpark MTP, 5 speculative tokens, probabilistic sampling",
+  "moe_backend": "flashinfer_b12x",
+  "context_limit": 1048576,
+  "scheduler": "max sequences 6; max batched tokens 8192; GPU memory utilisation 0.835",
+  "max_sequences": 6,
+  "max_batched_tokens": 8192,
+  "gpu_memory_utilisation": 0.835,
+  "competing_traffic": "none checked at start"
+}
+

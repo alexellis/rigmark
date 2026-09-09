@@ -1,0 +1,24 @@
+{
+  "record_type": "first-party serving input snapshot",
+  "operator": "Alex Ellis",
+  "captured_at": "2026-09-09",
+  "hardware": "1x NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB",
+  "topology": "TP1, local PCIe GPU",
+  "negotiated_link_speed": "not applicable",
+  "model": "Qwen/Qwen3.8-27B-FP8",
+  "model_revision": "local checkpoint; config sha256 74227dd615bf1ea975aa676bdf355a0379858c12f394b5365cd9dfa5fc2c70bc",
+  "weights_index_sha256": "f0838c766951bdfe76d6afbdb2771a8f67aaa2231dedb3d33cebd817729843a2",
+  "quantisation": "FP8 E4M3, dynamic activations, 128x128 blocks",
+  "kv_cache_dtype": "FP8",
+  "serving_engine": "vLLM 0.27.1",
+  "serving_image": "not applicable; native Python environment",
+  "drafter": "native MTP, 3 speculative tokens, Triton MoE",
+  "context_limit": 262144,
+  "scheduler": "max sequences 8; max batched tokens 8192; GPU memory utilisation 0.58",
+  "max_sequences": 8,
+  "max_batched_tokens": 8192,
+  "gpu_memory_utilisation": 0.58,
+  "co_resident_service": "Gemma server reserved on the same GPU and idle",
+  "competing_traffic": "no active requests checked at start; idle Gemma service remained resident"
+}
+

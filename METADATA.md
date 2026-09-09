@@ -34,3 +34,12 @@ mode, chat-template revision or hash, NCCL revision and environment, MoE
 backend and tuning-table revision, CUDA-graph capture sizes, exact network
 interface count, and container command-line flags. Unknown is more honest than
 an inferred value.
+
+## First-party records
+
+[`examples/serving-records/`](examples/serving-records/) contains the
+versioned, public-safe inputs used for Alex Ellis's three current appliances.
+They are explicitly snapshots, not generic examples and not proof of the live
+configuration. Their purpose is to make first-party results reproducible and
+to prevent material serving details from being replaced with guesses such as
+`drafter: none` or an approximate context limit.

@@ -187,6 +187,23 @@ class BenchTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 bench.load_metadata(path)
 
+    def test_first_party_serving_records_are_valid(self):
+        root = Path(__file__).resolve().parents[1]
+        records = sorted((root / "examples" / "serving-records").glob("*.json"))
+        expected = {
+            "alexellis-ds4f-0731-nvfp4-2x-dgx-spark.json",
+            "alexellis-glm53-flash-nvfp4-2x-dgx-spark.json",
+            "alexellis-qwen38-27b-fp8-rtxpro6000.json",
+        }
+        self.assertTrue(expected.issubset({record.name for record in records}))
+        for record in records:
+            with self.subTest(record=record.name):
+                metadata = bench.load_metadata(record)
+                self.assertEqual(
+                    "first-party serving input snapshot",
+                    metadata["record_type"],
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
