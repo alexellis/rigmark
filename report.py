@@ -75,6 +75,21 @@ def benchmark_identity(result: dict[str, Any]) -> str:
     return value
 
 
+def reasoning_effort(settings: dict[str, Any]) -> str:
+    """Return the reasoning effort from either supported request dialect."""
+    extra = settings.get("extra_body", {})
+    if not isinstance(extra, dict):
+        return "unspecified"
+    effort = extra.get("reasoning_effort")
+    if isinstance(effort, str) and effort:
+        return effort
+    template = extra.get("chat_template_kwargs", {})
+    if not isinstance(template, dict):
+        return "unspecified"
+    effort = template.get("reasoning_effort")
+    return effort if isinstance(effort, str) and effort else "unspecified"
+
+
 def render(result: dict[str, Any], fingerprint: str) -> str:
     errors = validate_result(result)
     if errors:
@@ -89,11 +104,7 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
     passed = sum(gate["passed"] for gate in gates)
     total = sum(gate["total"] for gate in gates)
     complete = passed == total
-    effort = (
-        settings.get("extra_body", {})
-        .get("chat_template_kwargs", {})
-        .get("reasoning_effort", "unspecified")
-    )
+    effort = reasoning_effort(settings)
     lines = [
         rule("╭", "─", "╮"),
         line("R I G M A R K   //   AGENT WORKLOAD RECEIPT"),

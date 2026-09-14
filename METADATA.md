@@ -38,7 +38,7 @@ an inferred value.
 ## First-party records
 
 [`examples/serving-records/`](examples/serving-records/) contains the
-versioned, public-safe inputs used for Alex Ellis's three current appliances.
+versioned, public-safe inputs used for Alex Ellis's current appliances.
 They are explicitly snapshots, not generic examples and not proof of the live
 configuration. Their purpose is to make first-party results reproducible and
 to prevent material serving details from being replaced with guesses such as

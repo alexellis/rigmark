@@ -30,6 +30,23 @@ class ReportTest(unittest.TestCase):
         self.assertEqual("512 TOKENS", report.depth_label(512))
         self.assertEqual("64K", report.depth_label(65_536))
 
+    def test_reasoning_effort_supports_both_request_dialects(self):
+        self.assertEqual(
+            "low",
+            report.reasoning_effort({"extra_body": {"reasoning_effort": "low"}}),
+        )
+        self.assertEqual(
+            "high",
+            report.reasoning_effort(
+                {
+                    "extra_body": {
+                        "chat_template_kwargs": {"reasoning_effort": "high"}
+                    }
+                }
+            ),
+        )
+        self.assertEqual("unspecified", report.reasoning_effort({}))
+
     def test_failed_gate_marks_card_incomplete(self):
         result = json.loads(json.dumps(self.result))
         result["decode"]["prose"]["runs"][0]["finish_reason"] = "length"

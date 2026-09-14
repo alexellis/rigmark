@@ -57,6 +57,48 @@ labelled as a speculative-decoding ceiling, not an everyday agent speed. The
 model families and hardware differ, so this is an appliance comparison—not a
 topology-only claim.
 
+## Qwen3.8 Flash Next NVFP4, TP2
+
+This standalone protocol 1.1 run used NVIDIA's clean NVFP4 checkpoint across
+two directly connected DGX Sparks. The serving stack used TP2 with expert
+parallelism, integrated MTP3 drafting, FP8 KV, and a one-million-token YaRN
+window. RigMark reached the model through authenticated Toilgate; there was no
+competing traffic at the start of the run.
+
+| Measurement | Result |
+|---|---:|
+| Code decode estimate | **62.8 tok/s** |
+| Code time to last output | **31.7 s** |
+| Prose decode estimate | **40.0 tok/s** |
+| Prose time to last output | **33.9 s** |
+| Valid structured ceiling | **67.0 tok/s** |
+| Cold 64K prefill | **2,757 tok/s** |
+| Warm 64K replay | **21,923 tok/s** |
+| C1 short code-load, end-to-end | **48.4 tok/s** |
+| C2 short code-load, end-to-end | **84.4 tok/s** |
+| C4 short code-load, end-to-end | **129.4 tok/s** |
+
+The engine allocated 4,488,745 logical FP8 KV tokens, equivalent to 4.49
+full-depth requests at the configured one-million-token limit. All 15 basic
+output gates passed. This result has its own comparison ID and must not be
+described as a matched comparison with the older protocol 1.0 table above.
+
+- [Result JSON](results/reference/qwen38-flash-next-nvidia-nvfp4-tp2-low.json)
+- [Share card](results/reference/qwen38-flash-next-nvidia-nvfp4-tp2-low.card.txt)
+- [Serving record](examples/serving-records/alexellis-qwen38-flash-next-nvfp4-2x-dgx-spark.json)
+
+Reproduce the run with:
+
+```bash
+./rigmark run \
+  --base-url http://SERVER:PORT \
+  --model qwen3.8-flash-next \
+  --label qwen38-flash-next-nvidia-nvfp4-tp2-low \
+  --comparison-id 2026-09-14-rigmark-standard \
+  --metadata examples/serving-records/alexellis-qwen38-flash-next-nvfp4-2x-dgx-spark.json \
+  --extra-body '{"reasoning_effort":"low"}'
+```
+
 Time to last output matters alongside decode rate. DeepSeek, for example,
 decoded prose much faster than GLM but took longer to finish because it emitted
 far more reasoning and output. Tokens/second alone does not describe that user

@@ -86,8 +86,9 @@ explicitly with `--extra-body` and use the identical value throughout the
 sweep; model defaults are not assumed equivalent.
 
 The repository also includes clearly labelled
-[first-party serving records](examples/serving-records/) for the Qwen, DeepSeek
-V4 Flash 0731, and GLM-5.3-Flash appliances operated by Alex Ellis. These are
+[first-party serving records](examples/serving-records/) for the Qwen 27B,
+Qwen Flash Next, DeepSeek V4 Flash 0731, and GLM-5.3-Flash appliances operated
+by Alex Ellis. These are
 versioned metadata inputs, not benchmark results or defaults for other users.
 They pin details that are easy to misreport—especially the drafter, image,
 recipe revision, scheduler, context limit, and co-resident services. Copy one
