@@ -27,6 +27,55 @@ class ReceiptTest(unittest.TestCase):
                 value = json.loads(path.read_text())
                 self.assertEqual([], receipt.validate_result(value))
 
+    def protocol12(self):
+        value = json.loads(Path("results/reference/qwen38-flash-next-nvidia-nvfp4-tp2-low.json").read_text())
+        value["protocol"]["version"] = "1.2.0"
+        value["settings"]["prefill_cache_isolation"] = "random-salt-per-pair"
+        for owner in value["decode"].values():
+            rows = owner["runs"]
+            owner["pooled_decode_tokens_per_second"] = round(
+                sum(row["completion_tokens"] - 1 for row in rows)
+                / sum(row["decode_seconds"] for row in rows), 3,
+            )
+        for depth, data in value["prefill"].items():
+            for phase in ("cold", "warm_replay"):
+                for i, row in enumerate(data[phase]["runs"]):
+                    row["cached_prompt_tokens"] = 0 if phase == "cold" else int(depth) - 256
+                    row["cache_salt_sha256"] = f"{int(depth) + i:064x}"
+        return value
+
+    def test_protocol12_validates_cache_evidence_and_pooled_rate(self):
+        value = self.protocol12()
+        self.assertEqual([], receipt.validate_result(value))
+        value["decode"]["prose"]["pooled_decode_tokens_per_second"] *= 2
+        self.assertTrue(any("pooled_decode" in error for error in receipt.validate_result(value)))
+
+    def test_protocol12_rejects_missing_or_reused_cache_evidence(self):
+        for mutation in ("missing", "reused", "mismatched", "cached", "malformed"):
+            with self.subTest(mutation=mutation):
+                value = self.protocol12()
+                data = value["prefill"]["8192"]
+                row = data["cold"]["runs"][0]
+                if mutation == "missing":
+                    row.pop("cached_prompt_tokens")
+                if mutation == "reused":
+                    data["cold"]["runs"][1]["cache_salt_sha256"] = row["cache_salt_sha256"]
+                if mutation == "mismatched":
+                    data["warm_replay"]["runs"][0]["cache_salt_sha256"] = "f" * 64
+                if mutation == "cached":
+                    row["cached_prompt_tokens"] = 256
+                if mutation == "malformed":
+                    row["cached_prompt_tokens"] = True
+                self.assertTrue(receipt.validate_result(value))
+
+    def test_protocol12_allows_explicitly_unknown_cache_usage(self):
+        value = self.protocol12()
+        for data in value["prefill"].values():
+            for phase in ("cold", "warm_replay"):
+                for row in data[phase]["runs"]:
+                    row["cached_prompt_tokens"] = None
+        self.assertEqual([], receipt.validate_result(value))
+
     def test_missing_raw_run_is_rejected(self):
         errors = self.errors_after(lambda value: value["decode"]["prose"]["runs"].pop())
         self.assertTrue(any("decode.prose.runs has" in error for error in errors))

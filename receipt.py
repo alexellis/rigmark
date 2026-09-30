@@ -141,6 +141,12 @@ def check_stream_row(
             and (not is_number(row[field]) or row[field] < 0)
         ):
             errors.append(f"{path}.{field} must be a non-negative number or null")
+    cached = row.get("cached_prompt_tokens")
+    if cached is not None and (
+        not is_int(cached) or cached < 0
+        or (is_int(row.get("prompt_tokens")) and cached > row["prompt_tokens"])
+    ):
+        errors.append(f"{path}.cached_prompt_tokens is invalid")
     completion = row.get("completion_tokens")
     window = row.get("decode_seconds")
     rate = row.get("decode_tokens_per_second")
@@ -227,9 +233,10 @@ def validate_result(result: Any) -> list[str]:
         errors.append("receipt records an incomplete run error")
     protocol = result.get("protocol")
     version = protocol.get("version") if isinstance(protocol, dict) else None
-    if version not in ("1.0.0", "1.1.0"):
+    if version not in ("1.0.0", "1.1.0", "1.2.0"):
         errors.append(f"unsupported protocol version: {version!r}")
-    require_v11 = version == "1.1.0"
+    require_v11 = version in ("1.1.0", "1.2.0")
+    require_v12 = version == "1.2.0"
     if require_v11 and not isinstance(
         protocol.get("repository_source_sha256"), str
     ):
@@ -272,6 +279,24 @@ def validate_result(result: Any) -> list[str]:
             "decode_tokens_per_second",
             path,
         )
+        if require_v12 or "pooled_decode_tokens_per_second" in value:
+            try:
+                if not all(isinstance(row, dict)
+                           and is_int(row.get("completion_tokens"))
+                           and row["completion_tokens"] >= 0
+                           and is_number(row.get("decode_seconds"))
+                           and row["decode_seconds"] >= 0 for row in rows):
+                    raise ValueError
+                pooled = sum(max(row["completion_tokens"] - 1, 0) for row in rows) / max(
+                    sum(row["decode_seconds"] for row in rows), 1e-9,
+                )
+                actual = value.get("pooled_decode_tokens_per_second")
+                if not is_number(actual) or not math.isclose(
+                    actual, round(pooled, 3), abs_tol=0.0005,
+                ):
+                    errors.append(f"{path}.pooled_decode_tokens_per_second does not match raw runs")
+            except (KeyError, TypeError, ValueError):
+                errors.append(f"{path}.pooled_decode_tokens_per_second is malformed")
         check_summary(errors, value, "ttft_seconds", rows, "ttft_seconds", path)
         check_summary(
             errors, value, "wall_seconds", rows, "wall_seconds", path,
@@ -302,6 +327,9 @@ def validate_result(result: Any) -> list[str]:
     prefill_runs = settings.get("prefill_runs")
     if depths and (not is_int(prefill_runs) or prefill_runs < 1):
         errors.append("settings.prefill_runs must be a positive integer")
+    if require_v12 and settings.get("prefill_cache_isolation") != "random-salt-per-pair":
+        errors.append("settings.prefill_cache_isolation must be random-salt-per-pair")
+    cold_salts: set[str] = set()
     for depth in depths:
         path = f"prefill.{depth}"
         value = prefill.get(str(depth))
@@ -334,6 +362,26 @@ def validate_result(result: Any) -> list[str]:
                         errors.append(
                             f"{row_path}.requested_prompt_tokens is required"
                         )
+                    cached = row.get("cached_prompt_tokens")
+                    if phase == "cold" and is_int(cached) and cached > 0:
+                        errors.append(f"{row_path} has cached tokens in a cold sample")
+                    if require_v12:
+                        if "cached_prompt_tokens" not in row:
+                            errors.append(f"{row_path}.cached_prompt_tokens is required")
+                        salt = row.get("cache_salt_sha256")
+                        if not isinstance(salt, str) or not re.fullmatch(r"[0-9a-f]{64}", salt):
+                            errors.append(f"{row_path}.cache_salt_sha256 is malformed")
+                        elif phase == "cold":
+                            if salt in cold_salts:
+                                errors.append(f"{row_path} reuses a cold cache salt")
+                            cold_salts.add(salt)
+                        else:
+                            cold_owner = value.get("cold")
+                            cold_rows = cold_owner.get("runs") if isinstance(cold_owner, dict) else None
+                            if (not isinstance(cold_rows, list) or index > len(cold_rows)
+                                or not isinstance(cold_rows[index - 1], dict)
+                                or salt != cold_rows[index - 1].get("cache_salt_sha256")):
+                                errors.append(f"{row_path} does not share its cold cache salt")
                     ttft = row.get("ttft_seconds")
                     prefill_rate = row.get(
                         "effective_prefill_tokens_per_second"

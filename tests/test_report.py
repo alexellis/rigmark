@@ -18,13 +18,57 @@ class ReportTest(unittest.TestCase):
         card = report.render(self.result, fingerprint)
         self.assertTrue(all(len(line) == report.WIDTH for line in card.splitlines()))
         self.assertIn("15/15 BASIC OUTPUT GATES PASSED", card)
-        self.assertIn("s last", card)
+        self.assertIn("Last (s)", card)
+        self.assertIn("Range tok/s", card)
+        self.assertIn("31.6–47.7", card)
         self.assertIn("PROSE", card)
         self.assertIn("tok/s", card)
         self.assertIn("git:", card)
         self.assertIn("clean", card)
         self.assertIn("CAPPED CONCURRENT GENERATION", card)
         self.assertIn(fingerprint[:16], card)
+
+    def test_card_preserves_headers_and_all_prefill_depths(self):
+        card = report.render(self.result, "0" * 64)
+        self.assertIn("BENCHMARKS LOCAL AI HOW CODING AGENTS ACTUALLY USE IT", card)
+        for label in ("8K", "32K", "64K", "Replay TTFT (s)"):
+            self.assertIn(label, card)
+        self.assertLess(card.index("SINGLE STREAM"), card.index("Hardware:"))
+        self.assertLess(card.index("Hardware:"), card.index("SUITE:"))
+
+    def test_skipped_phases_and_custom_flags_stay_visible(self):
+        result = json.loads(json.dumps(self.result))
+        result["settings"]["prefill_depths"] = []
+        result["settings"]["concurrency"] = []
+        result["settings"]["seed"] = 42
+        result.pop("prefill")
+        result.pop("concurrency")
+        card = report.render(result, "0" * 64)
+        self.assertIn("15/15 BASIC OUTPUT GATES PASSED", card)
+        for label in ("INCOMPLETE SUITE", "NOT MEASURED", "CUSTOM SETTINGS",
+                      "--skip-prefill", "--skip-concurrency", "--seed=42"):
+            self.assertIn(label, card)
+
+    def test_hardware_and_request_body_wrap_without_losing_values(self):
+        result = json.loads(json.dumps(self.result))
+        hardware = "Four mixed Spark appliances " + "full details " * 20 + "END_HARDWARE"
+        result["run"]["appliance"]["hardware"] = hardware
+        result["settings"]["extra_body"]["vendor_option"] = "z" * 160 + "END_OPTION"
+        card = report.render(result, "0" * 64)
+        self.assertTrue(all(len(row) == report.WIDTH for row in card.splitlines()))
+        self.assertIn("END_HARDWARE", card)
+        self.assertIn("END_OPTION", card)
+        self.assertIn("vendor_option", card)
+
+    def test_cold_claim_requires_reported_zero_hits(self):
+        result = json.loads(json.dumps(self.result))
+        self.assertIn("Cold cache UNVERIFIED", report.render(result, "0" * 64))
+        for value in result["prefill"].values():
+            for row in value["cold"]["runs"]:
+                row["cached_prompt_tokens"] = 0
+        card = report.render(result, "0" * 64)
+        self.assertIn("Cold tok/s", card)
+        self.assertNotIn("UNVERIFIED", card)
 
     def test_depth_label_does_not_round_down(self):
         self.assertEqual("512 TOKENS", report.depth_label(512))

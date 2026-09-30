@@ -1,7 +1,9 @@
+import io
 import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import bench
 
@@ -22,6 +24,83 @@ class BenchTest(unittest.TestCase):
         window, rate = bench.chunk_timed_decode_rate(101, 1.0, 3.0, 100)
         self.assertEqual(2.0, window)
         self.assertEqual(50.0, rate)
+
+    def test_protocol_bump_preserves_workload_nonce(self):
+        self.assertEqual("d41fd2e892d2aa50a177f821a15b6709",
+                         bench.nonce("sweep-1", "decode", "code", 1))
+
+    def test_stream_retains_and_validates_cached_token_usage(self):
+        def response(cached):
+            events = [
+                {"choices": [{"delta": {"content": "a"}}]},
+                {"choices": [{"delta": {"content": "b"}, "finish_reason": "stop"}],
+                 "usage": {"prompt_tokens": 10, "completion_tokens": 2,
+                           "prompt_tokens_details": {"cached_tokens": cached}}},
+            ]
+            return io.BytesIO(("".join("data: " + json.dumps(e) + "\n\n" for e in events)
+                               + "data: [DONE]\n\n").encode())
+        client = bench.Client("http://example.test", "", 1)
+        for cached in (0, 7, None):
+            with patch("bench.urllib.request.urlopen", return_value=response(cached)):
+                self.assertEqual(cached, client.stream("/v1/completions", {})["cached_prompt_tokens"])
+        for cached in (-1, 11, True, "0"):
+            with patch("bench.urllib.request.urlopen", return_value=response(cached)):
+                with self.assertRaisesRegex(RuntimeError, "invalid cached"):
+                    client.stream("/v1/completions", {})
+
+    def test_prefill_salts_change_across_pairs_and_repeated_sweeps(self):
+        class CacheClient:
+            def __init__(self):
+                self.requests = []
+                self.seen = set()
+
+            def json(self, path, payload):
+                return {"tokens": [1, 2]}
+
+            def stream(self, path, payload):
+                self.requests.append(payload)
+                salt = payload["cache_salt"]
+                cached = 16 if salt in self.seen else 0
+                self.seen.add(salt)
+                return {"prompt_tokens": len(payload["prompt"]), "ttft_seconds": 0.5,
+                        "cached_prompt_tokens": cached}
+        client = CacheClient()
+        with patch("builtins.print"):
+            for _ in range(2):
+                bench.run_prefill(client, "model", {"prefill_unit": "unit"}, [32], 2, "same-id")
+        salts = [r["cache_salt"] for r in client.requests]
+        self.assertEqual(4, len(set(salts)))
+        for i in range(0, 8, 2):
+            self.assertEqual(salts[i], salts[i + 1])
+        self.assertEqual(client.requests[0]["prompt"], client.requests[4]["prompt"])
+
+    def test_prefill_refuses_known_cold_cache_hit(self):
+        class CacheClient:
+            def json(self, path, payload):
+                return {"tokens": [1]}
+
+            def stream(self, path, payload):
+                return {"prompt_tokens": 32, "ttft_seconds": 0.5, "cached_prompt_tokens": 16}
+        with patch("builtins.print"), self.assertRaisesRegex(RuntimeError, "reported 16 cached"):
+            bench.run_prefill(CacheClient(), "model", {"prefill_unit": "unit"}, [32], 1, "id")
+
+    def test_pooled_decode_supplements_median_with_matching_windows(self):
+        class Client:
+            def __init__(self):
+                self.calls = 0
+
+            def stream(self, path, payload):
+                self.calls += 1
+                tokens, seconds = (11, 1) if self.calls == 1 else (201, 10)
+                return {"completion_tokens": tokens, "decode_seconds": seconds,
+                        "decode_tokens_per_second": (tokens - 1) / seconds,
+                        "ttft_seconds": 0.1, "time_to_last_output_seconds": seconds + 0.1,
+                        "wall_seconds": seconds + 0.1, "finish_reason": "stop", "output": "answer"}
+        with patch("builtins.print"):
+            result = bench.run_decode(Client(), "model", {"system": "sys", "workloads": {"prose": "p"}},
+                                      2, 4096, 1, {}, "id")["prose"]
+        self.assertEqual(15, result["decode_tokens_per_second"]["median"])
+        self.assertEqual(round(210 / 11, 3), result["pooled_decode_tokens_per_second"])
 
     def test_comma_ints(self):
         self.assertEqual([1, 2, 4], bench.comma_ints("1,2,4"))
