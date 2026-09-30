@@ -1,6 +1,6 @@
 # Benchmark protocol
 
-Current protocol version: **1.1.0**.
+Current protocol version: **1.2.0**.
 
 The purpose of this protocol is reproducibility, not producing the largest
 possible number.
@@ -23,10 +23,13 @@ it an appliance or recipe comparison.
 ## Decode
 
 The fixed corpus contains code, prose, and structured workloads. Nonces are
-deterministically derived from the protocol version, comparison ID, workload,
-and run number. Two appliances in a sweep therefore receive byte-identical
-prompts, while a new comparison ID prevents accidental cache reuse in a later
-sweep. Temperature is zero, `top_p` is one, and the seed is fixed.
+deterministically derived from the nonce version, comparison ID, workload,
+and run number. Protocol 1.2 retains the 1.1 nonce version to preserve those
+model inputs. Two appliances in a sweep therefore receive byte-identical
+prompts. Changing the comparison ID changes the inputs; it is not necessary to
+change it to isolate prefill caches. Temperature is zero, `top_p` is one, and
+the seed is fixed. These settings do not guarantee deterministic model output.
+Each run number still has its own nonce, so the five requests are distinct.
 Model-specific fields such as thinking mode are supplied through
 `--extra-body`, recorded verbatim, and must match. They cannot override the
 fixed benchmark fields.
@@ -44,6 +47,22 @@ per event. RigMark records the number of measured events and refuses to report
 a decode rate when a completion is buffered into one measurable event. The
 report publishes the median, minimum, maximum, and p90 of every workload; the
 best run is never the headline.
+
+Protocol 1.2 also records `pooled_decode_tokens_per_second` in each decode
+workload's JSON: `sum(max(completion_tokens - 1, 0)) / sum(decode_seconds)`.
+This pools the same token numerators and timing windows as the per-run
+estimates. It is a time-weighted aggregate rate, while the median describes the
+middle request rate; neither replaces the other. Longer answers have more
+weight in the pooled rate. A zero total decode window yields zero when no
+sample has more than one completion token. The share card retains the median
+and min/max range.
+
+Ranges describe observed variation, not confidence intervals. There is no
+excluded warm-up phase, and five samples do not establish the significance of
+a small tuning gain. Changing answer lengths, reasoning, speculative draft
+acceptance, and competing traffic can affect the observed rate. Retain the
+outputs and timings, and repeat whole suites under controlled conditions when
+assessing small differences.
 
 Completion tokens and decode timing cover the complete streamed generation,
 including reasoning where a server exposes it separately from visible output.
@@ -71,11 +90,25 @@ latency shown beside decode rate.
 
 The prefill test uses the server's `/tokenize` endpoint to create exact token-ID
 prompts, then sends those IDs to `/v1/completions`. Each pair has its own
-deterministic nonce, which defeats the prefix cache for the first request. The
-identical token list is immediately replayed. “Cold” therefore means
-cache-busting, not a cold model or cold kernels; “immediate replay” does not
-claim that a cache hit was independently observed. The default suite reports
-the median and range of three pairs at each depth.
+deterministic nonce. Protocol 1.2 additionally generates a fresh random
+256-bit `cache_salt` per pair, sharing it only with that pair's immediate
+replay. This prevents reusing a comparison ID from silently warming the next
+sweep's cold request, without changing its prompt tokens. The receipt records
+`settings.prefill_cache_isolation = "random-salt-per-pair"` and the salt's
+SHA256 in both rows, not the salt itself.
+
+Rows retain the server's `prompt_tokens_details.cached_tokens` as
+`cached_prompt_tokens`; null means the server did not report it. A known cache
+hit on the first request fails the run instead of producing a cold result.
+Missing cache usage remains explicitly unverified: the card labels the column
+"First" rather than "Cold" and prints a warning. Legacy receipts without this
+evidence also render as unverified. A zero count verifies only what the server
+reports; it is not independent instrumentation of the cache.
+
+“Cold” means an uncached prompt, not a cold model or cold kernels. "Immediate
+replay" describes request order and does not guarantee a cache hit. Its reported
+cache usage is retained too. The JSON retains medians and ranges of three pairs
+at each depth; the card shows throughput and TTFT for every requested depth.
 
 Effective prefill rate is `prompt_tokens / time_to_first_token`. It includes
 fixed request and scheduling overhead, so shallow and deep prompt depths should
@@ -85,8 +118,11 @@ that cannot fit its eight generated tokens inside the declared context limit.
 
 The decode suite works with OpenAI-compatible chat servers. Exact
 cache-busting/immediate-replay prefill additionally requires vLLM-compatible
-`/tokenize` and token-ID completion input; use `--skip-prefill` when an engine
-lacks these extensions.
+`/tokenize`, token-ID completion input, and acceptance of `cache_salt`. A server
+that rejects the field fails explicitly; RigMark does not silently retry with
+unsalted requests. A server that ignores it cannot be trusted to isolate the
+cache, so inspect reported cache usage. Use `--skip-prefill` when an engine
+lacks these extensions; the card marks the suite incomplete.
 
 ## Concurrency
 
@@ -114,3 +150,12 @@ for a reproducible public reference.
 The receipt SHA256 is a fingerprint of the published JSON bytes, not a digital
 signature or independent attestation. Comparison and reporting recompute
 summaries and basic gates from the raw rows before producing a card.
+
+
+The 74-column card keeps the identity header, basic output gates, decode
+medians/ranges, all prefill depths, and capped concurrency results above wrapped
+appliance details and settings. It marks omitted phases as incomplete and
+prints each changed suite flag, the complete extra request body, and comparison
+ID. "DEFAULT SETTINGS" describes the suite parameters, not a universal model
+reasoning profile: the separately printed request body remains part of the
+comparison. Hardware and request settings wrap rather than being truncated.

@@ -9,6 +9,7 @@ import json
 import os
 import platform
 import re
+import secrets
 import statistics
 import subprocess
 import sys
@@ -23,7 +24,9 @@ from pathlib import Path
 from typing import Any
 
 
-PROTOCOL_VERSION = "1.1.0"
+PROTOCOL_VERSION = "1.2.0"
+# Keep model inputs stable when measurement/receipt protocol details change.
+NONCE_VERSION = "1.1.0"
 HERE = Path(__file__).resolve().parent
 SOURCE_FILES = (
     "audit_code.py",
@@ -62,7 +65,7 @@ def safe_label(value: str) -> str:
 
 
 def nonce(comparison_id: str, *parts: object) -> str:
-    source = ":".join((PROTOCOL_VERSION, comparison_id, *(str(part) for part in parts)))
+    source = ":".join((NONCE_VERSION, comparison_id, *(str(part) for part in parts)))
     return hashlib.sha256(source.encode()).hexdigest()[:32]
 
 
@@ -197,6 +200,12 @@ class Client:
                 )
         completion = usage["completion_tokens"]
         prompt = usage["prompt_tokens"]
+        details = usage.get("prompt_tokens_details")
+        cached = details.get("cached_tokens") if isinstance(details, dict) else None
+        if cached is not None and (
+            type(cached) is not int or not 0 <= cached <= prompt
+        ):
+            raise RuntimeError("server returned invalid cached prompt-token usage")
         measured_events = len(measured_chunks)
         decode_window, decode_rate = chunk_timed_decode_rate(
             completion, first, last, measured_events
@@ -207,6 +216,7 @@ class Client:
         return {
             "prompt_tokens": prompt,
             "completion_tokens": completion,
+            "cached_prompt_tokens": cached,
             "ttft_seconds": round(first - started, 6),
             "time_to_first_visible_seconds": (
                 None if first_visible is None else round(first_visible - started, 6)
@@ -407,6 +417,12 @@ def run_decode(
         output[name] = {
             "runs": rows,
             "decode_tokens_per_second": summarise(rows, "decode_tokens_per_second"),
+            # Pool the same token numerators and timing windows as the per-run
+            # estimates. This supplements, rather than replaces, the median.
+            "pooled_decode_tokens_per_second": round(
+                sum(max(row["completion_tokens"] - 1, 0) for row in rows)
+                / max(sum(row["decode_seconds"] for row in rows), 1e-9), 3,
+            ),
             "ttft_seconds": summarise(rows, "ttft_seconds"),
             "time_to_last_output_seconds": summarise(
                 rows, "time_to_last_output_seconds"
@@ -500,7 +516,9 @@ def exact_token_ids(
     return tokens
 
 
-def prefill_once(client: Client, model: str, tokens: list[int]) -> dict[str, Any]:
+def prefill_once(
+    client: Client, model: str, tokens: list[int], cache_salt: str | None = None,
+) -> dict[str, Any]:
     payload = {
         "model": model,
         "prompt": tokens,
@@ -513,7 +531,11 @@ def prefill_once(client: Client, model: str, tokens: list[int]) -> dict[str, Any
             "include_usage": True,
         },
     }
+    if cache_salt is not None:
+        payload["cache_salt"] = cache_salt
     row = client.stream("/v1/completions", payload)
+    if cache_salt is not None:
+        row["cache_salt_sha256"] = hashlib.sha256(cache_salt.encode()).hexdigest()
     requested = len(tokens)
     reported = row["prompt_tokens"]
     if reported != requested:
@@ -549,8 +571,17 @@ def run_prefill(
                 prompts["prefill_unit"],
                 nonce(comparison_id, "prefill", depth, index + 1),
             )
-            cold = prefill_once(client, model, tokens)
-            warm = prefill_once(client, model, tokens)
+            # Separate cache isolation from deterministic model input. Reusing a
+            # comparison ID must not turn the next sweep's cold request warm.
+            salt = secrets.token_urlsafe(32)
+            cold = prefill_once(client, model, tokens, salt)
+            cached = cold.get("cached_prompt_tokens")
+            if cached is not None and cached > 0:
+                raise RuntimeError(
+                    f"cold prefill at {depth} tokens reported {cached} cached tokens; "
+                    "server may not honour cache_salt; refusing to label it cold"
+                )
+            warm = prefill_once(client, model, tokens, salt)
             cold["run"] = index + 1
             warm["run"] = index + 1
             cold_rows.append(cold)
@@ -795,6 +826,7 @@ def main() -> None:
             "extra_body": extra_body,
             "prefill_depths": [] if args.skip_prefill else args.prefill_depths,
             "prefill_runs": args.prefill_runs,
+            "prefill_cache_isolation": "random-salt-per-pair",
             "concurrency": [] if args.skip_concurrency else args.concurrency,
             "concurrency_runs": args.concurrency_runs,
             "concurrency_tokens": args.concurrency_tokens,

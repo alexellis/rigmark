@@ -19,36 +19,56 @@ required before claiming a topology-only speed-up.
 ## One screenshot, one receipt
 
 ```text
-╭──────────────────────────────────────────────────────────────────────────────────────────╮
-│  R I G M A R K   //   AGENT WORKLOAD RECEIPT                                             │
-│  BENCHMARKS LOCAL AI HOW CODING AGENTS ACTUALLY USE IT                                   │
-│  ●  15/15 BASIC OUTPUT GATES PASSED                                                      │
-├─ SYSTEM ─────────────────────────────────────────────────────────────────────────────────┤
-│  MODEL      Qwen3.8-27B-FP8-vllm                                                         │
-│  APPLIANCE  1x NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB                  │
-│  RUN        reasoning=low  •  protocol=1.0.0                                             │
-│  SOURCE     git:046e92cbe941  •  clean                                                   │
-├─ REAL OUTPUT ────────────────────────────────────────────────────────────────────────────┤
-│  WORKLOAD       DECODE EST.      LAST OUTPUT          RANGE          BASIC GATE          │
-│  CODE             129.5 tok/s      25.2s last    124.0–130.4    ✓ 5/5                    │
-│  PROSE             84.2 tok/s      19.9s last     81.9–100.1    ✓ 5/5                    │
-│  STRUCTURED*      136.0 tok/s       7.9s last    135.0–136.1    ✓ 5/5                    │
-│  * predictable-output ceiling; not a proxy for agent speed                               │
-├─ CONTEXT ────────────────────────────────────────────────────────────────────────────────┤
-│  64K PREFILL   cold 5,808 tok/s  •  immediate replay 85,248 tok/s                        │
-├─ CAPPED CONCURRENT GENERATION ───────────────────────────────────────────────────────────┤
-│  SHORT CODE • END-TO-END • 256-TOKEN CAP PER AGENT                                       │
-│  AGGREGATE   C1 108.7  •  C2 206.0  •  C4 385.4 tok/s                                    │
-│  C4 OUTPUT STATE   normal stop 0/12  •  visible 2/12  •  reasoning may be included       │
-├─ RECEIPT ────────────────────────────────────────────────────────────────────────────────┤
-│  JSON       sha256:604ea2c48107a69f…                                                     │
-│  SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK                                       │
-│  github.com/alexellis/rigmark                                                            │
-╰──────────────────────────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────────╮
+│  R I G M A R K   //   AGENT WORKLOAD RECEIPT                           │
+│  BENCHMARKS LOCAL AI HOW CODING AGENTS ACTUALLY USE IT                 │
+│  ●  15/15 BASIC OUTPUT GATES PASSED                                    │
+├─ MODEL ────────────────────────────────────────────────────────────────┤
+│  Qwen3.8-27B-FP8-vllm                                                  │
+├─ SINGLE STREAM ────────────────────────────────────────────────────────┤
+│  WORKLOAD         tok/s       Range tok/s   Last (s)    Checks         │
+│  CODE             129.5       124.0–130.4       25.2     ✓ 5/5         │
+│  PROSE             84.2        81.9–100.1       19.9     ✓ 5/5         │
+│  STRUCTURED*      136.0       135.0–136.1        7.9     ✓ 5/5         │
+│  * Predictable JSON ceiling; not general agent performance.            │
+│  Decode medians are estimates; rates include streamed reasoning.       │
+├─ PREFILL ──────────────────────────────────────────────────────────────┤
+│  DEPTH      First tok/s     First TTFT (s)    Replay TTFT (s)          │
+│  8K               8,173               1.00               0.25          │
+│  32K              6,968               4.70               0.44          │
+│  64K              5,808              11.28               0.77          │
+│  Cold cache UNVERIFIED: cache-hit usage unavailable.                   │
+│  Medians; replay is an immediate repeat, not a proven hit.             │
+├─ CAPPED CONCURRENT GENERATION ─────────────────────────────────────────┤
+│  Aggregate tok/s: C1 108.7 | C2 206.0 | C4 385.4                       │
+│  C4: 0/12 normal stops; 2/12 with visible output.                      │
+│  Capped throughput includes reasoning; not completed agent tasks.      │
+├─ APPLIANCE ────────────────────────────────────────────────────────────┤
+│  Hardware: 1x NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB │
+│  Topology: TP1, local PCIe GPU                                         │
+│  Checkpoint: Qwen/Qwen3.8-27B-FP8 @ local checkp                       │
+│  Quantisation: FP8 E4M3, dynamic activations, 128x128 blocks           │
+│  KV cache: FP8                                                         │
+│  Engine: vLLM 0.27.1                                                   │
+├─ SETTINGS ─────────────────────────────────────────────────────────────┤
+│  SUITE: DEFAULT SETTINGS                                               │
+│  REQUEST: {"chat_template_kwargs": {"reasoning_effort": "low"}}        │
+│  Temperature 0.0 | top_p 1.0 | seed 20260905 | protocol 1.0.0          │
+│  Decode: 5 runs, 4096-token cap | Prefill: 8K/32K/64K, 3 pairs         │
+│  Concurrency: C1/C2/C4, 3 rounds, 256-token cap; workload code         │
+│  Comparison ID: 2026-09-05-rigmark-standard-v2                         │
+├─ RECEIPT ──────────────────────────────────────────────────────────────┤
+│  SOURCE     git:046e92cbe941  •  clean                                 │
+│  JSON sha256:604ea2c48107a69f…                                         │
+│  SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK                     │
+│  github.com/alexellis/rigmark                                          │
+╰────────────────────────────────────────────────────────────────────────╯
 ```
 
 This card is rendered from a published protocol 1.0 receipt. The current runner
-emits protocol 1.1 receipts with stricter stream and timing evidence.
+emits protocol 1.2 receipts with per-pair cache isolation and cache-usage
+evidence. This older receipt has no cache-hit evidence, so its prefill is
+explicitly labelled unverified by the current renderer.
 
 The card is the shareable headline. It always shows the benchmark Git revision
 and whether that worktree was clean or dirty. GitHub source archives embed the
@@ -80,8 +100,9 @@ The configurator explains every metadata field and writes the ignored local
 `metadata.json`. See [`METADATA.md`](METADATA.md) if an agent is filling it in
 for you. The benchmark refuses unchanged placeholders or missing required
 fields. Use the same comparison ID for every appliance in one A/B sweep. This
-makes every generated prompt byte-for-byte identical; use a new ID for the next
-sweep. If the model supports graded effort or a thinking toggle, set it
+makes the corresponding generated prompts byte-for-byte identical. Keep the ID
+when repeating the same inputs; changing it changes the prompt nonces. Fresh
+per-pair cache salts isolate prefill independently of that ID. If the model supports graded effort or a thinking toggle, set it
 explicitly with `--extra-body` and use the identical value throughout the
 sweep; model defaults are not assumed equivalent.
 
@@ -116,6 +137,17 @@ every requested value. This is not a code-correctness score. Throughput from a
 failed gate remains diagnostic but must not be cited as a successful workload
 result. RigMark also reports time to the last generated output, because tok/s
 alone can conceal how long a verbose or reasoning-heavy answer takes.
+
+The card retains medians and min/max ranges. Protocol 1.2 JSON also includes
+`pooled_decode_tokens_per_second`, calculated from summed decode-token
+numerators and decode windows. It supplements the median; longer answers carry
+more weight. Neither ranges nor pooled rates are confidence intervals.
+
+Prefill sends a fresh `cache_salt` for every cold/replay pair. Known cache hits
+on a cold sample fail the run. If the server omits cache usage, the card marks
+that measurement unverified. Skipped phases remain visible as an incomplete
+suite. Custom suite flags and the full extra request body appear below the
+results, alongside wrapped appliance details.
 
 At the end, the runner prints a terminal result card designed to be
 screenshotted and saves a stable `RESULT.card.txt` beside the JSON. Reprint or
