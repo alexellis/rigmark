@@ -233,10 +233,10 @@ def validate_result(result: Any) -> list[str]:
         errors.append("receipt records an incomplete run error")
     protocol = result.get("protocol")
     version = protocol.get("version") if isinstance(protocol, dict) else None
-    if version not in ("1.0.0", "1.1.0", "1.2.0"):
+    if version not in ("1.0.0", "1.1.0", "1.2.0", "1.3.0"):
         errors.append(f"unsupported protocol version: {version!r}")
-    require_v11 = version in ("1.1.0", "1.2.0")
-    require_v12 = version == "1.2.0"
+    require_v11 = version in ("1.1.0", "1.2.0", "1.3.0")
+    require_v12 = version in ("1.2.0", "1.3.0")
     if require_v11 and not isinstance(
         protocol.get("repository_source_sha256"), str
     ):

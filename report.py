@@ -100,7 +100,7 @@ def reasoning_effort(settings: dict[str, Any]) -> str:
 
 
 SUITE_DEFAULTS = {
-    "runs": 5, "decode_tokens": 4096, "temperature": 0.0, "top_p": 1.0,
+    "runs": 5, "decode_tokens": 8192, "temperature": 0.0, "top_p": 1.0,
     "seed": 20260905, "prefill_depths": [8192, 32768, 65536],
     "prefill_runs": 3, "concurrency": [1, 2, 4], "concurrency_runs": 3,
     "concurrency_tokens": 256, "concurrency_workload": "code",
@@ -108,7 +108,10 @@ SUITE_DEFAULTS = {
 
 
 def settings_lines(settings: dict[str, Any], protocol: str) -> list[str]:
-    changed = {key: settings.get(key) for key, default in SUITE_DEFAULTS.items()
+    defaults = dict(SUITE_DEFAULTS)
+    if protocol in ("1.0.0", "1.1.0", "1.2.0"):
+        defaults["decode_tokens"] = 4096
+    changed = {key: settings.get(key) for key, default in defaults.items()
                if settings.get(key) != default}
     lines = [line("SUITE: " + ("CUSTOM SETTINGS" if changed else "DEFAULT SETTINGS"))]
     for key, value in changed.items():

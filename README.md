@@ -18,6 +18,12 @@ required before claiming a topology-only speed-up.
 
 ## One screenshot, one receipt
 
+The current protocol (1.3) allows 8,192 generated tokens per decode sample,
+including reasoning, with five samples per workload. Shorter answers stop
+normally. Prefill and the 256-token concurrency cap are unchanged. The archived
+receipt below retains its original protocol and 4,096-token default; old and
+new caps must not be presented as a matched comparison.
+
 ```text
 ╭────────────────────────────────────────────────────────────────────────╮
 │  R I G M A R K   //   AGENT WORKLOAD RECEIPT                           │
