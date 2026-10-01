@@ -74,6 +74,20 @@ class ReportTest(unittest.TestCase):
         self.assertEqual("512 TOKENS", report.depth_label(512))
         self.assertEqual("64K", report.depth_label(65_536))
 
+    def test_default_cap_label_respects_receipt_protocol(self):
+        for version in ("1.0.0", "1.1.0", "1.2.0", "1.3.0"):
+            for cap in (4096, 8192):
+                with self.subTest(version=version, cap=cap):
+                    settings = dict(report.SUITE_DEFAULTS, decode_tokens=cap)
+                    card = "\n".join(report.settings_lines(settings, version))
+                    expected = 8192 if version == "1.3.0" else 4096
+                    if cap == expected:
+                        self.assertIn("DEFAULT SETTINGS", card)
+                        self.assertNotIn("Changed:", card)
+                    else:
+                        self.assertIn("CUSTOM SETTINGS", card)
+                        self.assertIn(f"--decode-tokens={cap}", card)
+
     def test_reasoning_effort_supports_both_request_dialects(self):
         self.assertEqual(
             "low",

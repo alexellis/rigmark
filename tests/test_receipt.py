@@ -50,6 +50,17 @@ class ReceiptTest(unittest.TestCase):
         value["decode"]["prose"]["pooled_decode_tokens_per_second"] *= 2
         self.assertTrue(any("pooled_decode" in error for error in receipt.validate_result(value)))
 
+    def test_protocol13_preserves_cache_and_pooled_rate_requirements(self):
+        value = self.protocol12()
+        value["protocol"]["version"] = "1.3.0"
+        value["settings"]["decode_tokens"] = 8192
+        self.assertEqual([], receipt.validate_result(value))
+        value["decode"]["prose"].pop("pooled_decode_tokens_per_second")
+        value["prefill"]["8192"]["cold"]["runs"][0].pop("cache_salt_sha256")
+        errors = receipt.validate_result(value)
+        self.assertTrue(any("pooled_decode" in error for error in errors))
+        self.assertTrue(any("cache_salt" in error for error in errors))
+
     def test_protocol12_rejects_missing_or_reused_cache_evidence(self):
         for mutation in ("missing", "reused", "mismatched", "cached", "malformed"):
             with self.subTest(mutation=mutation):

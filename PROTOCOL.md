@@ -1,6 +1,6 @@
 # Benchmark protocol
 
-Current protocol version: **1.2.0**.
+Current protocol version: **1.3.0**.
 
 The purpose of this protocol is reproducibility, not producing the largest
 possible number.
@@ -21,6 +21,19 @@ speculative configuration, and scheduler must also match. If they do not, call
 it an appliance or recipe comparison.
 
 ## Decode
+
+Protocol 1.3 defaults to five samples per workload with an **8,192-token cap
+per sample**, shared by reasoning and visible output. Protocols 1.0–1.2
+defaulted to 4,096. The larger allowance gives reasoning-enabled models more
+room to finish; it does not require a longer answer or guarantee completion.
+The cap applies regardless of model-specific thinking controls. A capped
+response still fails the basic output gate.
+
+The prompt corpus, deterministic nonces, seed, sample counts, prefill settings,
+and 256-token concurrency cap are unchanged. The worst-case generated-token
+allowance for the decode phase doubles. Record custom caps explicitly, and
+do not treat 4K and 8K runs as a matched appliance comparison. Older receipts
+keep their original protocol and are labelled against that protocol's defaults.
 
 The fixed corpus contains code, prose, and structured workloads. Nonces are
 deterministically derived from the nonce version, comparison ID, workload,

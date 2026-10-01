@@ -9,6 +9,26 @@ import bench
 
 
 class BenchTest(unittest.TestCase):
+    def test_default_decode_cap_reaches_runner_and_receipt(self):
+        argv = ["bench.py", "--base-url", "http://localhost:1", "--model", "test",
+                "--label", "test", "--comparison-id", "test",
+                "--metadata", "unused.json", "--output", "unused.json"]
+        with patch("sys.argv", argv), \
+             patch("bench.load_metadata", return_value={"context_limit": 131072}), \
+             patch("bench.run_decode", return_value={}) as decode, \
+             patch("bench.run_prefill", return_value={}), \
+             patch("bench.run_concurrency", return_value={}), \
+             patch("bench.write_result") as write, \
+             patch("report.save_report", return_value=Path("unused.card.txt")), \
+             patch("report.print_report"), patch("builtins.print"):
+            bench.main()
+        self.assertEqual(8192, decode.call_args.args[4])
+        result = write.call_args.args[0]
+        self.assertEqual(8192, result["settings"]["decode_tokens"])
+        self.assertEqual(5, result["settings"]["runs"])
+        self.assertEqual(256, result["settings"]["concurrency_tokens"])
+        self.assertEqual("1.3.0", result["protocol"]["version"])
+
     def test_normalise_base_url(self):
         self.assertEqual("http://host:8000", bench.normalise_base_url("http://host:8000/v1/"))
         self.assertEqual("http://host:8000", bench.normalise_base_url("http://host:8000"))

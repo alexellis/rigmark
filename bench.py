@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 
-PROTOCOL_VERSION = "1.2.0"
+PROTOCOL_VERSION = "1.3.0"
 # Keep model inputs stable when measurement/receipt protocol details change.
 NONCE_VERSION = "1.1.0"
 HERE = Path(__file__).resolve().parent
@@ -754,7 +754,10 @@ def main() -> None:
     parser.add_argument("--model", default="auto")
     parser.add_argument("--api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--runs", type=int, default=5)
-    parser.add_argument("--decode-tokens", type=int, default=4096)
+    parser.add_argument(
+        "--decode-tokens", type=int, default=8192,
+        help="generated-token cap per decode sample, including reasoning (default: 8192)",
+    )
     parser.add_argument(
         "--prefill-depths",
         type=comma_ints,
