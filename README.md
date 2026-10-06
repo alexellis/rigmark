@@ -49,7 +49,10 @@ identical answers or timings from every serving stack.
 > — [@jayleaton](https://x.com/jayleaton), 29 September 2026,
 > after running the standard suite on TensorFold GLM-5.3-Flash on two DGX Sparks
 
-## superterm for sovereign local AI
+## Beyond RigMark: superterm for sovereign local AI
+
+Running recipes and tuning models is work in its own right. Beyond the
+benchmarks, local AI needs a control plane.
 
 **Coding, agents, chat, and voice—with models running on hardware you control.**
 
