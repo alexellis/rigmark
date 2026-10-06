@@ -4,9 +4,9 @@
 
 **RigMark benchmarks local AI how coding agents actually use it.**
 
-Most AI benchmarks reduce a serving stack to one flattering number. RigMark is
-a reproducible stress test for the whole OpenAI-compatible appliance:
-agent-shaped code and prose, an explicitly labelled structured-output ceiling,
+RigMark is an independent, reproducible serving benchmark for the whole
+OpenAI-compatible appliance: agent-shaped prose and code, an explicitly
+labelled structured-output ceiling,
 exact cache-busting/immediate-replay prefill, and concurrent request behaviour.
 It is a serving benchmark, not a claim that three prompts reproduce a complete
 multi-turn coding session.
@@ -16,21 +16,54 @@ SGLang, local GPU servers, or multi-node DGX Spark recipes. A different model or
 serving stack is an appliance comparison; identical weights and software are
 required before claiming a topology-only speed-up.
 
-### Put your local models to work with Superterm
+## Why RigMark exists
 
-[Superterm](https://superterm.dev/), from RigMark's author, gives your coding
-agents a home in the browser. Use OpenCode with your local models, keep track
-of which sessions need attention, and check progress or send a follow-up from
-your phone.
+RigMark grew out of running local AI for real work and trying to reconcile the
+figures shared on X with what we saw on our own hardware. A claim of
+"65–80 tok/s" tells you little without the workload: counting to 200 can look
+very different from writing prose or code, especially with speculative
+decoding. Alex describes that experience in
+[How and Why We Bought 4x DGX Sparks](https://blog.alexellis.io/how-and-why-we-bought-4-dgx-sparks/).
 
-<a href="https://superterm.dev/"><img src="docs/images/superterm-sessions.jpg" alt="Superterm Overview showing agent sessions, attention states, and a question awaiting input" width="560"></a>
+What started as a tool for our own comparisons is now used by DGX Spark recipe
+authors when sharing their results. The useful change is from an isolated
+speed claim to a receipt: prose, code, structured output, and prefill measured
+under disclosed settings, with outputs and a traceable RigMark Git revision.
+Fixed inputs and published ranges make variation visible; they do not promise
+identical answers or timings from every serving stack.
 
-- **Community Edition:** free for personal, non-commercial use on one device,
-  with session attention, logbook, and mobile access.
-- **Pro:** for daily and professional use, with access across your devices,
-  multi-line input, image paste, voice dictation, and email support.
+## What people are saying about RigMark
 
-[Get Community Edition or explore Pro](https://superterm.dev/pricing/).
+> “keep up your work, rigmark itself is great.”
+>
+> — [@O80925253](https://x.com/O80925253), 30 September 2026
+
+> “I'm definitely going to be keeping Rigmark in the stack for testing.
+> Initial numbers look good…”
+>
+> — [@bertholomusai](https://x.com/bertholomusai), 4 October 2026,
+> after running full GLM-5.3 EXL3 on four DGX Sparks
+
+> “but actually running that test pointed out some improvements I missed.”
+>
+> — [@jayleaton](https://x.com/jayleaton), 29 September 2026,
+> after running the standard suite on TensorFold GLM-5.3-Flash on two DGX Sparks
+
+## superterm for sovereign local AI
+
+**Coding, agents, chat, and voice—with models running on hardware you control.**
+
+Use [superterm](https://superterm.dev/) to write code with an agent, chat
+through an idea, or dictate the next task from your desktop or phone.
+Self-host your workspace and use local models and speech services to keep
+your work on your own infrastructure.
+
+<a href="https://superterm.dev/"><img src="docs/images/superterm-sovereign-ai.png" alt="superterm chat checking local coding agents, with a DeepSeek model picker and voice controls" width="720"></a>
+
+*Local-model chat checking in with coding agents. Staged demonstration.*
+
+[Explore superterm](https://superterm.dev/) ·
+[Community Edition and Pro](https://superterm.dev/pricing/)
 
 ## One screenshot, one receipt
 
@@ -248,6 +281,25 @@ thinking/request body, run counts, output lengths, prefill depths/runs, or
 concurrency settings differ. `--allow-mismatch` exists for exploratory
 comparisons and prints the mismatches. A matched card means the client requests
 match; token/s ratios still require matching server-side token definitions.
+
+## The next question: quality
+
+Speed is only part of a useful local AI setup. Fitting a model into local
+memory often means quantising its weights: lossy compression that can change
+its answers. A faster recipe needs to be evaluated for what it gets right,
+as well as how quickly it generates tokens.
+
+RigMark's basic output gates check completion and the requested JSON values;
+they do not establish reasoning quality or equivalence to the original
+checkpoint. Even passing the model's own generated tests is only evidence of
+self-consistency. We would welcome help with repeatable quality evaluations:
+independent code tests, instruction following, and retrieval at longer
+contexts, with pinned checkpoints and quantisation details.
+
+[Issues](https://github.com/alexellis/rigmark/issues) and
+[pull requests](https://github.com/alexellis/rigmark/pulls) are welcome,
+including suggestions for existing evaluations we can build on. Bring the
+prompts, expected results, and failure cases so others can reproduce them.
 
 ## Fair-use checklist
 
