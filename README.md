@@ -16,6 +16,22 @@ SGLang, local GPU servers, or multi-node DGX Spark recipes. A different model or
 serving stack is an appliance comparison; identical weights and software are
 required before claiming a topology-only speed-up.
 
+### Put your local models to work with Superterm
+
+[Superterm](https://superterm.dev/), from RigMark's author, gives your coding
+agents a home in the browser. Use OpenCode with your local models, keep track
+of which sessions need attention, and check progress or send a follow-up from
+your phone.
+
+<a href="https://superterm.dev/"><img src="docs/images/superterm-sessions.jpg" alt="Superterm Overview showing agent sessions, attention states, and a question awaiting input" width="560"></a>
+
+- **Community Edition:** free for personal, non-commercial use on one device,
+  with session attention, logbook, and mobile access.
+- **Pro:** for daily and professional use, with access across your devices,
+  multi-line input, image paste, voice dictation, and email support.
+
+[Get Community Edition or explore Pro](https://superterm.dev/pricing/).
+
 ## One screenshot, one receipt
 
 The current protocol (1.3) allows 8,192 generated tokens per decode sample,
@@ -26,48 +42,65 @@ new caps must not be presented as a matched comparison.
 
 ```text
 ╭────────────────────────────────────────────────────────────────────────╮
+│                                                                        │
 │  R I G M A R K   //   AGENT WORKLOAD RECEIPT                           │
 │  BENCHMARKS LOCAL AI HOW CODING AGENTS ACTUALLY USE IT                 │
 │  ●  15/15 BASIC OUTPUT GATES PASSED                                    │
+│                                                                        │
 ├─ MODEL ────────────────────────────────────────────────────────────────┤
+│                                                                        │
 │  Qwen3.8-27B-FP8-vllm                                                  │
+│                                                                        │
 ├─ SINGLE STREAM ────────────────────────────────────────────────────────┤
+│                                                                        │
 │  WORKLOAD         tok/s       Range tok/s   Last (s)    Checks         │
-│  CODE             129.5       124.0–130.4       25.2     ✓ 5/5         │
 │  PROSE             84.2        81.9–100.1       19.9     ✓ 5/5         │
+│  CODE             129.5       124.0–130.4       25.2     ✓ 5/5         │
 │  STRUCTURED*      136.0       135.0–136.1        7.9     ✓ 5/5         │
+│                                                                        │
 │  * Predictable JSON ceiling; not general agent performance.            │
 │  Decode medians are estimates; rates include streamed reasoning.       │
+│                                                                        │
 ├─ PREFILL ──────────────────────────────────────────────────────────────┤
+│                                                                        │
 │  DEPTH      First tok/s     First TTFT (s)    Replay TTFT (s)          │
 │  8K               8,173               1.00               0.25          │
 │  32K              6,968               4.70               0.44          │
 │  64K              5,808              11.28               0.77          │
 │  Cold cache UNVERIFIED: cache-hit usage unavailable.                   │
 │  Medians; replay is an immediate repeat, not a proven hit.             │
+│                                                                        │
 ├─ CAPPED CONCURRENT GENERATION ─────────────────────────────────────────┤
+│                                                                        │
 │  Aggregate tok/s: C1 108.7 | C2 206.0 | C4 385.4                       │
 │  C4: 0/12 normal stops; 2/12 with visible output.                      │
 │  Capped throughput includes reasoning; not completed agent tasks.      │
+│                                                                        │
 ├─ APPLIANCE ────────────────────────────────────────────────────────────┤
+│                                                                        │
 │  Hardware: 1x NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 96 GB │
 │  Topology: TP1, local PCIe GPU                                         │
 │  Checkpoint: Qwen/Qwen3.8-27B-FP8 @ local checkp                       │
 │  Quantisation: FP8 E4M3, dynamic activations, 128x128 blocks           │
 │  KV cache: FP8                                                         │
 │  Engine: vLLM 0.27.1                                                   │
+│                                                                        │
 ├─ SETTINGS ─────────────────────────────────────────────────────────────┤
+│                                                                        │
 │  SUITE: DEFAULT SETTINGS                                               │
 │  REQUEST: {"chat_template_kwargs": {"reasoning_effort": "low"}}        │
 │  Temperature 0.0 | top_p 1.0 | seed 20260905 | protocol 1.0.0          │
 │  Decode: 5 runs, 4096-token cap | Prefill: 8K/32K/64K, 3 pairs         │
 │  Concurrency: C1/C2/C4, 3 rounds, 256-token cap; workload code         │
 │  Comparison ID: 2026-09-05-rigmark-standard-v2                         │
+│                                                                        │
 ├─ RECEIPT ──────────────────────────────────────────────────────────────┤
+│                                                                        │
 │  SOURCE     git:046e92cbe941  •  clean                                 │
 │  JSON sha256:604ea2c48107a69f…                                         │
 │  SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK                     │
 │  github.com/alexellis/rigmark                                          │
+│                                                                        │
 ╰────────────────────────────────────────────────────────────────────────╯
 ```
 
@@ -236,6 +269,10 @@ The exact measurement definitions and claim boundaries are in
 Reference results include their complete generated outputs and appliance
 metadata, not just headline numbers. See [`RESULTS.md`](RESULTS.md) for the
 current table and exact commands.
+
+If RigMark helps you tune your setup or publish reproducible recipes,
+[consider sponsoring Alex Ellis](https://github.com/sponsors/alexellis) to
+support its maintenance and testing.
 
 ## Development
 

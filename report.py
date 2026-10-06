@@ -46,9 +46,9 @@ def rule(left: str, middle: str, right: str) -> str:
     return left + middle * (WIDTH - 2) + right
 
 
-def section(title: str) -> str:
+def section(title: str) -> list[str]:
     prefix = f"├─ {title} "
-    return prefix + "─" * (WIDTH - len(prefix) - 1) + "┤"
+    return [line(), prefix + "─" * (WIDTH - len(prefix) - 1) + "┤", line()]
 
 
 def metric(result: dict[str, Any], workload: str) -> str:
@@ -166,6 +166,7 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
     levels = settings.get("concurrency", [])
     lines = [
         rule("╭", "─", "╮"),
+        line(),
         line("R I G M A R K   //   AGENT WORKLOAD RECEIPT"),
         line("BENCHMARKS LOCAL AI HOW CODING AGENTS ACTUALLY USE IT"),
         line(f"●  {passed}/{total} BASIC OUTPUT GATES PASSED" if passed == total else
@@ -175,16 +176,17 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
         missing = ", ".join(name for name, enabled in
                             (("prefill", depths), ("concurrency", levels)) if not enabled)
         lines.extend(wrapped_lines("INCOMPLETE SUITE: " + missing + " not measured"))
-    lines.append(section("MODEL"))
+    lines.extend(section("MODEL"))
     lines.extend(wrapped_lines(run["model"]))
     lines.extend([
-        section("SINGLE STREAM"),
+        *section("SINGLE STREAM"),
         line(f"{'WORKLOAD':<14}{'tok/s':>8}{'Range tok/s':>18}{'Last (s)':>11}{'Checks':>10}"),
-        *(line(metric(result, name)) for name in ("code", "prose", "structured")),
+        *(line(metric(result, name)) for name in ("prose", "code", "structured")),
+        line(),
         line("* Predictable JSON ceiling; not general agent performance."),
         line("Decode medians are estimates; rates include streamed reasoning."),
     ])
-    lines.append(section("PREFILL"))
+    lines.extend(section("PREFILL"))
     if depths:
         verified = all(
             row.get("cached_prompt_tokens") == 0
@@ -206,7 +208,7 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
         lines.append(line("Medians; replay is an immediate repeat, not a proven hit."))
     else:
         lines.append(line("NOT MEASURED: prefill skipped (--skip-prefill)."))
-    lines.append(section("CAPPED CONCURRENT GENERATION"))
+    lines.extend(section("CAPPED CONCURRENT GENERATION"))
     if levels:
         values = [f"C{level} {result['concurrency'][str(level)]['aggregate_end_to_end_tokens_per_second']['median']:.1f}"
                   for level in levels]
@@ -222,7 +224,7 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
         lines.append(line("Capped throughput includes reasoning; not completed agent tasks."))
     else:
         lines.append(line("NOT MEASURED: concurrency skipped (--skip-concurrency)."))
-    lines.append(section("APPLIANCE"))
+    lines.extend(section("APPLIANCE"))
     for label, key in (("Hardware", "hardware"), ("Topology", "topology"),
                        ("Checkpoint", "model"), ("Quantisation", "quantisation"),
                        ("KV cache", "kv_cache_dtype"), ("Engine", "serving_engine"),
@@ -233,15 +235,16 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
             if revision_key and appliance.get(revision_key):
                 value += " @ " + str(appliance[revision_key])[:12]
             lines.extend(wrapped_lines(f"{label}: {value}"))
-    lines.append(section("SETTINGS"))
+    lines.extend(section("SETTINGS"))
     lines.extend(settings_lines(settings, result["protocol"]["version"]))
     lines.extend(wrapped_lines("Comparison ID: " + str(run.get("comparison_id", "unknown"))))
-    lines.append(section("RECEIPT"))
+    lines.extend(section("RECEIPT"))
     lines.extend(wrapped_lines(benchmark_identity(result)))
     lines.extend([
         line(f"JSON sha256:{fingerprint[:16]}…"),
         line("SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK"),
         line("github.com/alexellis/rigmark"),
+        line(),
         rule("╰", "─", "╯"),
     ])
     return "\n".join(lines)
