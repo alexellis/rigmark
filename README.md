@@ -163,7 +163,7 @@ git clone https://github.com/alexellis/rigmark
 cd rigmark
 ./rigmark configure
 
-./rigmark run \
+./rigmark bench \
   --base-url http://SERVER:8000 \
   --model auto \
   --label my-appliance \
@@ -295,9 +295,15 @@ as well as how quickly it generates tokens.
 RigMark's basic output gates check completion and the requested JSON values;
 they do not establish reasoning quality or equivalence to the original
 checkpoint. Even passing the model's own generated tests is only evidence of
-self-consistency. We would welcome help with repeatable quality evaluations:
-independent code tests, instruction following, and retrieval at longer
-contexts, with pinned checkpoints and quantisation details.
+self-consistency. The separate, experimental
+[RigMark Quality](https://github.com/alexellis/rigmark-quality) project runs
+small coding and tool-use tasks with independent checks. Use `rigmark quality`
+there to inspect task-level receipts; it is not a complete model or
+quantisation quality score.
+
+We would welcome help extending the evaluations: independent code tests,
+instruction following, and retrieval at longer contexts, with pinned
+checkpoints and quantisation details.
 
 [Issues](https://github.com/alexellis/rigmark/issues) and
 [pull requests](https://github.com/alexellis/rigmark/pulls) are welcome,
