@@ -15,6 +15,7 @@ COMMANDS = {
     "run": "bench.py",
     "report": "report.py",
     "compare": "compare.py",
+    "check": "release_check.py",
 }
 
 

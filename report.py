@@ -84,6 +84,27 @@ def benchmark_identity(result: dict[str, Any]) -> str:
     return value
 
 
+def release_identity(run: dict[str, Any]) -> str | None:
+    check = run.get("rigmark_release_check")
+    if not isinstance(check, dict):
+        return None
+    tag = check.get("tag", "the newest release")
+    status = check.get("status")
+    if status == "identical":
+        value = f"RIGMARK RELEASE: matches {tag}"
+    elif status == "ahead":
+        value = f"RIGMARK RELEASE: ahead of {tag} (unreleased checkout)"
+    elif status == "behind":
+        value = f"RIGMARK RELEASE: BEHIND {tag}"
+    elif status == "diverged":
+        value = f"RIGMARK RELEASE: diverges from {tag}"
+    else:
+        value = "RIGMARK RELEASE: unverified"
+    if check.get("allow_stale"):
+        value += " (archival run)"
+    return value
+
+
 def reasoning_effort(settings: dict[str, Any]) -> str:
     """Return the reasoning effort from either supported request dialect."""
     extra = settings.get("extra_body", {})
@@ -240,6 +261,9 @@ def render(result: dict[str, Any], fingerprint: str) -> str:
     lines.extend(wrapped_lines("Comparison ID: " + str(run.get("comparison_id", "unknown"))))
     lines.extend(section("RECEIPT"))
     lines.extend(wrapped_lines(benchmark_identity(result)))
+    release = release_identity(run)
+    if release:
+        lines.extend(wrapped_lines(release))
     lines.extend([
         line(f"JSON sha256:{fingerprint[:16]}…"),
         line("SHARE THE CARD • LINK THE JSON RECEIPT • #RIGMARK"),

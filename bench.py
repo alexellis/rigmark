@@ -35,6 +35,7 @@ SOURCE_FILES = (
     "configure.py",
     "prompts.json",
     "receipt.py",
+    "release_check.py",
     "report.py",
     "rigmark",
 )
@@ -774,6 +775,10 @@ def main() -> None:
     parser.add_argument("--timeout", type=float, default=1800)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--seed", type=int, default=20260905)
+    parser.add_argument(
+        "--allow-stale", action="store_true",
+        help="allow an older RigMark checkout for deliberate archival runs",
+    )
     args = parser.parse_args()
 
     if args.runs < 1 or args.prefill_runs < 1 or args.concurrency_runs < 1:
@@ -803,6 +808,16 @@ def main() -> None:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     output = args.output or Path("results") / f"{filename_label}-{timestamp}.json"
     repository = git_identity()
+    from release_check import check_release, format_check
+
+    release_check = check_release(repository["repository_revision"],
+                                  repository["repository_dirty"])
+    print(format_check(release_check), flush=True)
+    if release_check["status"] == "behind" and not args.allow_stale:
+        parser.error("RigMark is behind the newest published release; update "
+                     "before benchmarking, or use --allow-stale for an archival run")
+    if args.allow_stale:
+        release_check["allow_stale"] = True
     result: dict[str, Any] = {
         "schema": 1,
         "protocol": {
@@ -817,6 +832,7 @@ def main() -> None:
             "started_at": datetime.now(timezone.utc).isoformat(),
             "model": model,
             "appliance": metadata,
+            "rigmark_release_check": release_check,
             "python": platform.python_version(),
             "platform": platform.platform(),
         },
@@ -884,6 +900,10 @@ def main() -> None:
         print(f"card: {card}")
         print()
         print_report(result, output)
+        print(f"\nShare the full ASCII card: {card}")
+        print(f"Link the matching JSON receipt: {output}")
+        print("If an agent ran this, include both files in its reply; do not "
+              "replace the card with a summary table.")
     except (KeyError, OSError, TypeError, ValueError) as error:
         print(f"warning: could not render terminal report: {error}", file=sys.stderr)
 

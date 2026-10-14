@@ -1,6 +1,7 @@
 import io
 import json
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -19,8 +20,10 @@ class BenchTest(unittest.TestCase):
              patch("bench.run_prefill", return_value={}), \
              patch("bench.run_concurrency", return_value={}), \
              patch("bench.write_result") as write, \
+             patch("release_check.check_release", return_value={"status": "identical"}), \
+             patch("release_check.format_check", return_value="current"), \
              patch("report.save_report", return_value=Path("unused.card.txt")), \
-             patch("report.print_report"), patch("builtins.print"):
+             patch("report.print_report"), patch("builtins.print") as printed:
             bench.main()
         self.assertEqual(8192, decode.call_args.args[4])
         result = write.call_args.args[0]
@@ -28,6 +31,42 @@ class BenchTest(unittest.TestCase):
         self.assertEqual(5, result["settings"]["runs"])
         self.assertEqual(256, result["settings"]["concurrency_tokens"])
         self.assertEqual("1.3.0", result["protocol"]["version"])
+        output = "\n".join(str(call.args[0]) for call in printed.call_args_list
+                           if call.args)
+        self.assertIn("Share the full ASCII card: unused.card.txt", output)
+        self.assertIn("Link the matching JSON receipt: unused.json", output)
+
+    def test_stale_checkout_stops_before_measurement(self):
+        argv = ["bench.py", "--base-url", "http://localhost:1", "--model", "test",
+                "--label", "test", "--comparison-id", "test",
+                "--metadata", "unused.json"]
+        with patch("sys.argv", argv), \
+             patch("bench.load_metadata", return_value={"context_limit": 131072}), \
+             patch("release_check.check_release", return_value={"status": "behind"}), \
+             patch("release_check.format_check", return_value="behind"), \
+             patch("bench.run_decode") as decode, \
+             patch("builtins.print"), \
+             redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as stopped:
+            bench.main()
+        self.assertEqual(2, stopped.exception.code)
+        decode.assert_not_called()
+
+    def test_allow_stale_marks_archival_run(self):
+        argv = ["bench.py", "--base-url", "http://localhost:1", "--model", "test",
+                "--label", "test", "--comparison-id", "test",
+                "--metadata", "unused.json", "--allow-stale"]
+        with patch("sys.argv", argv), \
+             patch("bench.load_metadata", return_value={"context_limit": 131072}), \
+             patch("release_check.check_release", return_value={"status": "behind"}), \
+             patch("release_check.format_check", return_value="behind"), \
+             patch("bench.run_decode", return_value={}), \
+             patch("bench.run_prefill", return_value={}), \
+             patch("bench.run_concurrency", return_value={}), \
+             patch("bench.write_result") as write, \
+             patch("report.save_report", return_value=Path("unused.card.txt")), \
+             patch("report.print_report"), patch("builtins.print"):
+            bench.main()
+        self.assertTrue(write.call_args.args[0]["run"]["rigmark_release_check"]["allow_stale"])
 
     def test_normalise_base_url(self):
         self.assertEqual("http://host:8000", bench.normalise_base_url("http://host:8000/v1/"))

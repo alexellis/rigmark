@@ -133,6 +133,14 @@ class ReportTest(unittest.TestCase):
             self.assertEqual(Path(directory) / "run.card.txt", card_path)
             self.assertIn("R I G M A R K", card_path.read_text())
 
+    def test_card_discloses_release_status(self):
+        result = json.loads(json.dumps(self.result))
+        result["run"]["rigmark_release_check"] = {
+            "status": "behind", "tag": "v0.0.4", "allow_stale": True,
+        }
+        card = report.render(result, "0" * 64)
+        self.assertIn("RIGMARK RELEASE: BEHIND v0.0.4 (archival run)", card)
+
     def test_published_cards_avoid_overclaiming_terms(self):
         forbidden = (
             "OUTPUTS COMPLETE",

@@ -16,6 +16,11 @@ SGLang, local GPU servers, or multi-node DGX Spark recipes. A different model or
 serving stack is an appliance comparison; identical weights and software are
 required before claiming a topology-only speed-up.
 
+**Sharing a run?** Post the generated ASCII `.card.txt` and link its matching
+JSON receipt. RigMark prints and saves the card automatically; see
+[One screenshot, one receipt](#one-screenshot-one-receipt) for an example.
+Agents running RigMark should follow [AGENTS.md](AGENTS.md).
+
 ## Why RigMark exists
 
 RigMark grew out of running local AI for real work and trying to reconcile the
@@ -141,7 +146,7 @@ new caps must not be presented as a matched comparison.
 ```
 
 This card is rendered from a published protocol 1.0 receipt. The current runner
-emits protocol 1.2 receipts with per-pair cache isolation and cache-usage
+emits protocol 1.3 receipts with per-pair cache isolation and cache-usage
 evidence. This older receipt has no cache-hit evidence, so its prefill is
 explicitly labelled unverified by the current renderer.
 
@@ -161,6 +166,7 @@ Python 3.10 or newer is required; there are no third-party packages.
 ```bash
 git clone https://github.com/alexellis/rigmark
 cd rigmark
+./rigmark check
 ./rigmark configure
 
 ./rigmark bench \
@@ -170,6 +176,13 @@ cd rigmark
   --comparison-id weekend-sweep-1 \
   --metadata metadata.json
 ```
+
+`./rigmark check` compares this checkout with the newest published release,
+including pre-releases. `bench` repeats that check before measuring and stops
+if the checkout is behind; update it before running. Use `--allow-stale` only
+for a deliberately pinned historical run, and label it as such. If GitHub is
+unreachable, the benchmark continues but its release status is unverified.
+An unreleased `master` commit ahead of the newest release is reported as such.
 
 The configurator explains every metadata field and writes the ignored local
 `metadata.json`. See [`METADATA.md`](METADATA.md) if an agent is filling it in
@@ -192,7 +205,7 @@ only when reproducing that appliance, then change every field that differs.
 
 The default suite performs:
 
-- five runs of code, prose, and structured JSON with a 4,096-token ceiling;
+- five runs of code, prose, and structured JSON with an 8,192-token ceiling;
 - three cold/immediate-warm pairs at 8,192, 32,768, and 65,536 tokens; and
 - three rounds of code at concurrency 1, 2, and 4 with 256-token outputs.
 
@@ -213,7 +226,7 @@ failed gate remains diagnostic but must not be cited as a successful workload
 result. RigMark also reports time to the last generated output, because tok/s
 alone can conceal how long a verbose or reasoning-heavy answer takes.
 
-The card retains medians and min/max ranges. Protocol 1.2 JSON also includes
+The card retains medians and min/max ranges. The JSON receipt also includes
 `pooled_decode_tokens_per_second`, calculated from summed decode-token
 numerators and decode windows. It supplements the median; longer answers carry
 more weight. Neither ranges nor pooled rates are confidence intervals.
@@ -232,8 +245,13 @@ regenerate it at any time with:
 ./rigmark report --save results/YOUR-RESULT.json
 ```
 
-Share the card with the complete JSON—the card is the headline, and the JSON
-is the receipt.
+If an agent runs RigMark for you, ask it for **both files**: the generated
+`results/LABEL-TIMESTAMP.card.txt` (paste the full ASCII or screenshot it) and
+the matching `results/LABEL-TIMESTAMP.json` (link the complete receipt). Do not
+replace the card with a hand-written summary table. The card is the headline,
+and the JSON is the receipt. An older JSON receipt can be rendered with the
+current card layout using the command above, but it remains an older protocol
+run and is not directly comparable with current defaults.
 
 The code answer deliberately includes an implementation and its own test suite.
 Replay those model-supplied tests in a locked-down Docker container with:
