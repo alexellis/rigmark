@@ -1,11 +1,68 @@
 # Published reference runs
 
-These are appliance speed measurements, not model-quality rankings. All three
-results within each table use the same clean RigMark revision, comparison ID,
-prompts, low-effort request body, 4,096-token completion limit, and run counts.
-Every code, prose, and structured response passed its basic output gate:
-**15/15 per appliance**. That means visible output and a normal finish, not
-semantic correctness.
+These are appliance speed measurements, not model-quality rankings. The older
+September sweeps below use a 4,096-token completion limit; the October
+comparison uses protocol 1.3's 8,192-token default. Compare results only within
+their own matched sweep. A basic output gate means visible output and a normal
+finish, not semantic correctness.
+
+## GLM-5.3-Flash TP4: RiNGSiDE and TensorFold, 14 October 2026
+
+Our four-Spark RiNGSiDE run and the [TensorFold EXL3 run shared by
+@krunkosaurus](https://gist.github.com/krunkosaurus/d308ea4f658dc65736bc773f5630f3ae)
+used the same clean RigMark commit (`612eff1a8239`), protocol 1.3 prompts,
+comparison ID, `reasoning_effort=low` request body, 8,192-token decode cap,
+and default run counts. `rigmark compare --card` accepted them without
+`--allow-mismatch`. These are matched **client requests**, not matched weights,
+engines, quantisation, or speculative decoders.
+
+| Measurement | RiNGSiDE NVFP4 | TensorFold EXL3 |
+|---|---:|---:|
+| Prose decode estimate | 62.1 tok/s | **70.2 tok/s** |
+| Prose time to last output ↓ | 16.7 s | **14.3 s** |
+| Code decode estimate | 108.6 tok/s | **125.4 tok/s** |
+| Code time to last output ↓ | 18.6 s | **16.9 s** |
+| Structured ceiling | 156.3 tok/s | **177.2 tok/s** |
+| 64K cold prefill | **5,144 tok/s** | 2,615 tok/s |
+| 64K cold time to first token ↓ | **12.74 s** | 25.06 s |
+| C4 capped code throughput | 159.1 tok/s | **176.9 tok/s** |
+
+TensorFold is about 13% faster on prose decode, 15% on code decode, and 11% on
+the capped C4 load. RiNGSiDE is about 1.97× faster on 64K cold prefill. Token
+rates assume comparable server-side token accounting; time to last output and
+cold time to first token provide complementary wall-clock measures.
+
+All nine cold prefill samples in each receipt requested exactly 8K, 32K, or
+64K tokens and reported zero cached tokens. RiNGSiDE used cache salt on an
+already-running, idle service; its 54 completed requests accounted for the
+entire increase in the server's request counter during our run. TensorFold's
+salt did not isolate its cache, so its author restarted all four ranks before
+the run. Both passed 15/15 basic output gates. At C4, neither receipt had a
+normal stop in its 12 capped streams; C4 measures short-load capacity, not
+completed agent tasks. These gates do not establish quality parity between the
+two quantisations.
+
+The [RiNGSiDE JSON receipt](results/reference/glm53-ringside-nvfp4-tp4-low-p13.json),
+[full ASCII card](results/reference/glm53-ringside-nvfp4-tp4-low-p13.card.txt),
+and [matched comparison card](results/reference/glm53-ringside-vs-tensorfold-exl3-p13.card.txt)
+are available here. The [public-safe serving metadata](examples/serving-records/alexellis-glm53-ringside-nvfp4-tp4.json)
+records the appliance used for this run. The public JSON differs from the raw result only by
+replacing a private LAN address in `run.appliance.client` with a generic
+description; no sample, setting, or other metadata was changed. The original
+raw result is retained privately.
+
+Reproduce the client request against a quiet RiNGSiDE TP4 endpoint using
+RigMark commit `612eff1a8239`:
+
+```bash
+./rigmark run \
+  --base-url http://HEAD:8888 \
+  --model nvidia/GLM-5.3-Flash-NVFP4 \
+  --label glm53-ringside-tp4-low-p13 \
+  --comparison-id 2026-09-05-glm-tp2-tp4-rigmark-v1 \
+  --metadata examples/serving-records/alexellis-glm53-ringside-nvfp4-tp4.json \
+  --extra-body '{"chat_template_kwargs":{"reasoning_effort":"low"}}'
+```
 
 ## Matched GLM TP2 → TP4 sweep
 

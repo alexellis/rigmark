@@ -1,0 +1,20 @@
+{
+  "record_type": "first-party serving input snapshot",
+  "operator": "Alex Ellis",
+  "captured_at": "2026-10-14",
+  "client": "RigMark on a local Linux workstation against the direct rank-0 LAN API.",
+  "competing_traffic": "Direct shared RingSide endpoint; no requests running or waiting at preflight, with request-success counters unchanged across preflight samples. No exclusive lock; before/after counters retained.",
+  "context_limit": 262144,
+  "drafter": "incoai/GLM-5.3-Flash-DFlash2 at 7d74cdd881ed7e32c31175984a67823127b66cfe; greedy walk, adaptive k up to 7; RigMark temperature 0/top_p 1; low reasoning",
+  "experiment": "One protocol 1.3 default suite from clean RigMark commit 612eff1, 8192 generated-token decode cap, chat_template_kwargs.reasoning_effort=low only, matched to TensorFold EXL3 receipt settings. Existing live RingSide service left running; cold prefill judged from per-sample cached-token counters and cache_salt isolation, not a fresh server restart.",
+  "hardware": "4 x NVIDIA DGX Spark GB10, 128 GB unified memory per node; driver 580.173.02",
+  "kv_cache_dtype": "fp8_e4m3, 32 GiB KV per rank; KDA state fp16-slow32",
+  "model": "RedHatAI/GLM-5.3-Flash-NVFP4; served alias nvidia/GLM-5.3-Flash-NVFP4",
+  "model_revision": "18d55bfd5a2194887738da73753975c9d3842f46; NVIDIA tokenizer 423acf37583782c51c142d145aef733d72943d93; all files hash-verified",
+  "negotiated_link_speed": "200000 Mbit/s reported by all 16 fabric netdevs; MTU 9000",
+  "quantisation": "NVFP4 checkpoint; compressed-tensors; RiNGSiDE mixed dense FP8 prefill and selected FP8 decode families; optional weightless steering disabled",
+  "scheduler": "max-num-seqs 16; max-num-batched-tokens 14336; no async scheduling; block size and prefix-cache-retention-interval 2304; upstream RiNGSiDE TP4 profile",
+  "serving_engine": "RiNGSiDE 6606f7638aff044a8170e414818477679934a1c3; vLLM v0.29.0 98dff2a81d747d1dba01a47f939f48c3526d4206 with pinned author patches",
+  "serving_image": "sha256:bdbca213b4f5deae6e09205383597e017aa32d74fc6088be108ea13dbf2d6054",
+  "topology": "TP4 switchless four-cable ring, dual PCIe functions per cable; MTU 9000"
+}
