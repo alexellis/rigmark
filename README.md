@@ -11,6 +11,13 @@ exact cache-busting/immediate-replay prefill, and concurrent request behaviour.
 It is a serving benchmark, not a claim that three prompts reproduce a complete
 multi-turn coding session.
 
+**AI-assisted workflow:** This repository was built and tested with Codex. It is
+designed to be driven by a capable AI coding agent, rather than followed as a
+universal step-by-step manual. Give the agent the full checkout, ask it to read
+this README and any `AGENTS.md`, adapt the commands to your environment, run the
+checks, and investigate errors from their output. Review machine-specific
+changes before applying them.
+
 It is deliberately model-agnostic: use it with Qwen, GLM, DeepSeek, vLLM,
 SGLang, local GPU servers, or multi-node DGX Spark recipes. A different model or
 serving stack is an appliance comparison; identical weights and software are
